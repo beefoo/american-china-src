@@ -1,5 +1,20 @@
+# Creates a cup in Blender: blender --background --python cup.py
+# Or run this in Blender: exec(compile(open(filename).read(), "/absolute/path/to/cup/cup.py", 'exec'))
+
 import bpy
-import os
+
+# config
+CFG = {
+    "origin": (0, 0, 0),
+    "diameter": 7.0,            # in cm
+    "height": 8.0,              # in cm
+    "thickness": 0.5,           # in cm
+    "baseDiameter": 0.9,        # percent of total diameter
+    "baseHeight": 0.1,          # percent of total height
+    "curviness": 0.5,           # percent of thickness
+    "innerDiameter": 0.9,       # percent of total diameter minus thickness
+    "innerCurveMidpoint": 0.5   # percent of inner height
+}
 
 scene = bpy.context.scene
 
@@ -27,7 +42,7 @@ mesh = bpy.data.meshes.new("Cup")
 obj = bpy.data.objects.new("Cup", mesh)
 
 # Set location and scene of object
-obj.location = (0, 0, 0)
+obj.location = CFG["origin"]
 bpy.context.scene.objects.link(obj)
 
 # Create mesh
