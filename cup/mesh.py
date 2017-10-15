@@ -11,20 +11,23 @@ PRECISION = 3
 # cup config in cm
 VERTICES_PER_EDGE_LOOP = 16
 TOP_WIDTH = 8.2
-HEIGHT = 6.0
+HEIGHT = 8.2
 EDGE_RADIUS = 0.2
 TOP_CORNER_RADIUS = 1.0
+THICKNESS = 0.6
 
+# relative widths
 BASE_OUTER_DIAMETER = 0.5 * TOP_WIDTH
-BASE_INNER_DIAMETER = 0.5 * BASE_OUTER_DIAMETER
+BASE_INNER_DIAMETER = 0.667 * BASE_OUTER_DIAMETER
 BASE_INSET_DIAMETER = 0.8 * BASE_INNER_DIAMETER
 BODY_DIAMETER = 1.0 * TOP_WIDTH
-NECK_DIAMETER = 0.92 * TOP_WIDTH
+NECK_DIAMETER = 0.9 * TOP_WIDTH
 
-BASE_INSET_HEIGHT = 0.3
+# relative heights
+BASE_INSET_HEIGHT = 0.25
 BASE_HEIGHT = 0.1 * HEIGHT
 BODY_HEIGHT = 0.167 * HEIGHT
-NECK_HEIGHT = 0.8 * HEIGHT
+NECK_HEIGHT = 0.85 * HEIGHT
 
 def circle(vertices, center, radius, z):
     angleStart = -135
@@ -181,6 +184,9 @@ class Mesh:
                 faces = self.getFacesFromEdgeLoops(indexOffset, verticesPerEdgeLoop)
                 self.faces += faces
                 indexOffset += verticesPerEdgeLoop
+        # add the last edge's face
+        indexOffset = len(self.verts) - verticesPerEdgeLoop
+        self.faces.append([(i+indexOffset) for i in range(verticesPerEdgeLoop)])
 
 class Vector:
 
@@ -225,7 +231,21 @@ mesh.addEdgeLoop(neck)
 top = roundedSquare(CENTER, TOP_WIDTH, HEIGHT, TOP_CORNER_RADIUS)
 mesh.addEdgeLoop(top, EDGE_RADIUS)
 
-# solidify (duplicate, scale, translate, join)
+# move in to inner top
+innerTop = roundedSquare(CENTER, TOP_WIDTH-THICKNESS*2, HEIGHT, TOP_CORNER_RADIUS)
+mesh.addEdgeLoop(innerTop, False, EDGE_RADIUS)
+
+# move in and down to inner neck
+innerNeck = roundedSquare(CENTER, NECK_DIAMETER-THICKNESS*2, NECK_HEIGHT, TOP_CORNER_RADIUS)
+mesh.addEdgeLoop(innerNeck)
+
+# move in and down to inner body
+innerBody = circle(VERTICES_PER_EDGE_LOOP, CENTER, BODY_DIAMETER * 0.5 - THICKNESS, BODY_HEIGHT)
+mesh.addEdgeLoop(innerBody)
+
+# move in and down to inner base
+innerBase = circle(VERTICES_PER_EDGE_LOOP, CENTER, BASE_INNER_DIAMETER * 0.5 - THICKNESS, BASE_HEIGHT + THICKNESS)
+mesh.addEdgeLoop(innerBase)
 
 # create faces from edges
 mesh.processEdgeloops()
