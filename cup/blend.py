@@ -49,3 +49,7 @@ for d in data:
 
     # Select the object
     obj.select = True
+
+    # Add subsurf modifier
+    obj.modifiers.new("subd", type='SUBSURF')
+    obj.modifiers['subd'].levels = 2

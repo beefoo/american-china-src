@@ -9,28 +9,28 @@ OUTPUT_FILE = "mesh.json"
 PRECISION = 3
 
 # cup config in cm
-VERTICES_PER_EDGE = 16
+VERTICES_PER_EDGE_LOOP = 16
 TOP_WIDTH = 8.2
 HEIGHT = 6.0
-EDGE_LOOP = 0.2
+EDGE_RADIUS = 0.2
 TOP_CORNER_RADIUS = 1.0
 
-BASE_OUTER_DIAMETER = 0.4 * TOP_WIDTH
+BASE_OUTER_DIAMETER = 0.5 * TOP_WIDTH
 BASE_INNER_DIAMETER = 0.5 * BASE_OUTER_DIAMETER
 BASE_INSET_DIAMETER = 0.8 * BASE_INNER_DIAMETER
-BODY_DIAMETER = 0.6 * TOP_WIDTH
-NECK_DIAMETER = 0.8 * TOP_WIDTH
+BODY_DIAMETER = 1.0 * TOP_WIDTH
+NECK_DIAMETER = 0.92 * TOP_WIDTH
 
 BASE_INSET_HEIGHT = 0.3
 BASE_HEIGHT = 0.1 * HEIGHT
-BODY_HEIGHT = 0.2 * HEIGHT
+BODY_HEIGHT = 0.167 * HEIGHT
 NECK_HEIGHT = 0.8 * HEIGHT
 
 def circle(vertices, center, radius, z):
     angleStart = -135
     angleStep = 360.0 / vertices
     c = []
-    for i in range(VERTICES_PER_EDGE):
+    for i in range(vertices):
         angle = angleStart + angleStep * i
         p = translatePoint(center, angle, radius)
         c.append((p[0], p[1], z))
@@ -124,52 +124,63 @@ class Mesh:
         self.verts = []
         self.edges = []
         self.faces = []
+        self.edgeLoops = []
 
-    def addEdge(self, edge, edgeLoopAfterPrevious=False, edgeLoopBeforeNext=False):
-        # add an edge loop after previous edge
-        if edgeLoopAfterPrevious is not False:
-            self.addEdgeLoop(edge, edgeLoopAfterPrevious, True)
-        # add an edge loop before adding the next one
-        if edgeLoopBeforeNext is not False:
-            self.addEdgeLoop(edge, edgeLoopBeforeNext, False)
-        self.verts += edge
-        self.edges.append(edge)
+        self.queueEdgeAfter = False
 
-    def addEdgeLoop(self, nextEdge, amount, after=True):
-        prevEdge = self.edges[-1]
+    def addEdgeLoop(self, edge, edgeBefore=False, edgeAfter=False):
+        # add an edge loop after the previous one
+        if self.queueEdgeAfter is not False:
+            self.addEdgeLoopHelper(edge, self.queueEdgeAfter, True)
+            self.queueEdgeAfter = False
+        # add an edge loop before the next one
+        if edgeBefore is not False:
+            self.addEdgeLoopHelper(edge, edgeBefore, False)
+        # add an edge loop after the next one
+        if edgeAfter is not False:
+            self.queueEdgeAfter = edgeAfter
+
+        self.edgeLoops.append(edge)
+
+    def addEdgeLoopHelper(self, nextEdge, amount, after=True):
+        prevEdge = self.edgeLoops[-1]
         d = distance(prevEdge[0], nextEdge[0])
         lerpAmount = amount / d
+        if lerpAmount >= 0.5:
+            return False
         if not after:
             lerpAmount = 1.0 - lerpAmount
         edge = lerpEdge(prevEdge, nextEdge, lerpAmount)
-        self.verts += edge
-        self.edges.append(edge)
+        self.edgeLoops.append(edge)
 
-    def getFaces(self, indexOffset, verticesPerEdge):
+    def getFacesFromEdgeLoops(self, indexOffset, verticesPerEdgeLoop):
         faces = []
-        for i in range(verticesPerEdge):
+        for i in range(verticesPerEdgeLoop):
             v1 = i
             v2 = i + 1
-            v3 = i + 1 + verticesPerEdge
-            v4 = i + verticesPerEdge
-            if v2 >= verticesPerEdge:
+            v3 = i + 1 + verticesPerEdgeLoop
+            v4 = i + verticesPerEdgeLoop
+            if v2 >= verticesPerEdgeLoop:
                 v2 = 0
-                v3 = verticesPerEdge
+                v3 = verticesPerEdgeLoop
             faces.append((v1+indexOffset, v2+indexOffset, v3+indexOffset, v4+indexOffset))
         return faces
 
-    # join all the edges together
-    def makeFaces(self):
-        verticesPerEdge = len(self.edges[0])
+    # join all the edge loop together
+    def processEdgeloops(self):
+        verticesPerEdgeLoop = len(self.edgeLoops[0])
         # add the first edge's face
-        self.faces.append(range(verticesPerEdge))
+        self.faces.append(range(verticesPerEdgeLoop))
         # add faces for subsequent edges
         indexOffset = 0
-        for i, edge in enumerate(self.edges):
+        for i, edgeLoop in enumerate(self.edgeLoops):
+            # add vertices
+            self.verts += edgeLoop
             if i > 0:
-                faces = self.getFaces(indexOffset, verticesPerEdge)
+                # add faces
+                faces = self.getFacesFromEdgeLoops(indexOffset, verticesPerEdgeLoop)
                 self.faces += faces
-                indexOffset += verticesPerEdge
+                indexOffset += verticesPerEdgeLoop
 
 class Vector:
 
@@ -187,36 +198,37 @@ CENTER = (halfWidth, halfWidth, 0)
 mesh = Mesh()
 
 # create base inset as a circle which will be the first face
-baseInset = circle(VERTICES_PER_EDGE, CENTER, BASE_INSET_DIAMETER * 0.5, BASE_INSET_HEIGHT)
-mesh.addEdge(baseInset)
+baseInset = circle(VERTICES_PER_EDGE_LOOP, CENTER, BASE_INSET_DIAMETER * 0.5, BASE_INSET_HEIGHT)
+mesh.addEdgeLoop(baseInset)
 
 # move down and out to base inner
-baseInner = circle(VERTICES_PER_EDGE, CENTER, BASE_INNER_DIAMETER * 0.5, 0)
-mesh.addEdge(baseInner)
+baseInner = circle(VERTICES_PER_EDGE_LOOP, CENTER, BASE_INNER_DIAMETER * 0.5, 0)
+mesh.addEdgeLoop(baseInner, False, EDGE_RADIUS)
 
 # move out to base outer
-baseOuter = circle(VERTICES_PER_EDGE, CENTER, BASE_OUTER_DIAMETER * 0.5, 0)
-mesh.addEdge(baseOuter, EDGE_LOOP, EDGE_LOOP)
+baseOuter = circle(VERTICES_PER_EDGE_LOOP, CENTER, BASE_OUTER_DIAMETER * 0.5, 0)
+mesh.addEdgeLoop(baseOuter, EDGE_RADIUS, EDGE_RADIUS)
 
 # move up to base
-base = circle(VERTICES_PER_EDGE, CENTER, BASE_OUTER_DIAMETER * 0.5, BASE_HEIGHT)
-mesh.addEdge(base, EDGE_LOOP, EDGE_LOOP)
-
-# determine top edge so we can lerp to it
-top = roundedSquare(CENTER, TOP_WIDTH, HEIGHT, TOP_CORNER_RADIUS)
+base = circle(VERTICES_PER_EDGE_LOOP, CENTER, BASE_OUTER_DIAMETER * 0.5, BASE_HEIGHT)
+mesh.addEdgeLoop(base, EDGE_RADIUS, EDGE_RADIUS)
 
 # move up and out (lerp) to body
+body = circle(VERTICES_PER_EDGE_LOOP, CENTER, BODY_DIAMETER * 0.5, BODY_HEIGHT)
+mesh.addEdgeLoop(body)
 
 # move up and out (lerp) to neck
+neck = roundedSquare(CENTER, NECK_DIAMETER, NECK_HEIGHT, TOP_CORNER_RADIUS)
+mesh.addEdgeLoop(neck)
 
 # move up and out (lerp) to top
+top = roundedSquare(CENTER, TOP_WIDTH, HEIGHT, TOP_CORNER_RADIUS)
+mesh.addEdgeLoop(top, EDGE_RADIUS)
 
 # solidify (duplicate, scale, translate, join)
 
-# fix normals
-
 # create faces from edges
-mesh.makeFaces()
+mesh.processEdgeloops()
 
 # save data
 data = [
