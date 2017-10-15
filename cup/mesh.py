@@ -4,30 +4,81 @@ import json
 import math
 import sys
 
+# data config
 OUTPUT_FILE = "mesh.json"
 PRECISION = 3
 
-# config
-CFG = {
-    "diameter": 7.0,            # in cm
-    "height": 8.0,              # in cm
-    "thickness": 0.5,           # in cm
-    "edge": 0.2,                # in cm
-    "baseDiameter": 0.6         # percent of diameter
-}
+# cup config in cm
+VERTICES_PER_EDGE = 16
+TOP_WIDTH = 8.2
+HEIGHT = 6.0
+EDGE_LOOP = 0.2
+TOP_CORNER_RADIUS = 1.0
 
-def lerp(a, b, amt):
-    return (b-a) * amt + a
+BASE_OUTER_DIAMETER = 0.4 * TOP_WIDTH
+BASE_INNER_DIAMETER = 0.5 * BASE_OUTER_DIAMETER
+BASE_INSET_DIAMETER = 0.8 * BASE_INNER_DIAMETER
+BODY_DIAMETER = 0.6 * TOP_WIDTH
+NECK_DIAMETER = 0.8 * TOP_WIDTH
 
-def lerpRow(r1, r2, amt):
-    lerpedRow = []
+BASE_INSET_HEIGHT = 0.3
+BASE_HEIGHT = 0.1 * HEIGHT
+BODY_HEIGHT = 0.2 * HEIGHT
+NECK_HEIGHT = 0.8 * HEIGHT
+
+def circle(vertices, center, radius, z):
+    angleStart = -135
+    angleStep = 360.0 / vertices
+    c = []
+    for i in range(VERTICES_PER_EDGE):
+        angle = angleStart + angleStep * i
+        p = translatePoint(center, angle, radius)
+        c.append((p[0], p[1], z))
+    return c
+
+def distance(p1, p2):
+    x1, y1, z1 = p1
+    x2, y2, z2 = p2
+    return math.sqrt((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1) + (z2-z1)*(z2-z1))
+
+def lerp(a, b, mu):
+    return (b-a) * mu + a
+
+# http://paulbourke.net/miscellaneous/interpolation/
+def lerpCos(a, b, mu):
+   mu2 = (1 - math.cos(mu * math.pi)) / 2.0
+   return (y1 * (1 - mu2) + y2 * mu2)
+
+# http://paulbourke.net/miscellaneous/interpolation/
+def lerpCubic(a, b, c, d, mu):
+   mu2 = mu * mu
+   a0 = d - c - a + b
+   a1 = a - b - a0
+   a2 = c - a
+   a3 = b
+   return (a0 * mu * mu2 + a1 * mu2 + a2 * mu + a3)
+
+def lerpEdge(r1, r2, amt):
+    lerpedEdge = []
     for i, t in enumerate(r1):
         p = []
         for j in range(3):
             pp = lerp(t[j], r2[i][j], amt)
             p.append(pp)
-        lerpedRow.append(tuple(p))
-    return lerpedRow
+        lerpedEdge.append(tuple(p))
+    return lerpedEdge
+
+def roundedSquare(c, w, z, r):
+    hw = w * 0.5
+    baseOrigin = (c[0]-hw, c[1]-hw, z)
+    bo = Vector(baseOrigin)
+    square = [
+        bo.t, bo.add((r, 0, 0)), bo.add((hw, 0, 0)), bo.add((w-r, 0, 0)),
+        bo.add((w, 0, 0)), bo.add((w, r, 0)), bo.add((w, hw, 0)), bo.add((w, w-r, 0)),
+        bo.add((w, w, 0)), bo.add((w-r, w, 0)), bo.add((hw, w, 0)), bo.add((r, w, 0)),
+        bo.add((0, w, 0)), bo.add((0, w-r, 0)), bo.add((0, hw, 0)), bo.add((0, r, 0))
+    ]
+    return square
 
 def roundP(vList, precision):
     rounded = []
@@ -56,47 +107,69 @@ def translatePoint(p, degrees, distance):
     y2 = p[1] + distance * math.sin(radians)
     return (x2, y2)
 
+def squareToCircle(points):
+    uv = []
+    for p in points:
+        x = p[0]
+        y = p[1]
+        z = p[2]
+        u = x * math.sqrt( 1 - y * y * 0.5 )
+        v = y * math.sqrt( 1 - x * x * 0.5 )
+        uv.append((u,v,z))
+    return uv
+
 class Mesh:
 
-    def __init__(self, verts):
-        self.verticesPerRow = len(verts)
-        self.verts = verts[:]
+    def __init__(self):
+        self.verts = []
         self.edges = []
-        self.faces = [range(self.verticesPerRow)]
+        self.faces = []
 
-        self.currentRow = verts[:]
-        self.indexOffset = 0
+    def addEdge(self, edge, edgeLoopAfterPrevious=False, edgeLoopBeforeNext=False):
+        # add an edge loop after previous edge
+        if edgeLoopAfterPrevious is not False:
+            self.addEdgeLoop(edge, edgeLoopAfterPrevious, True)
+        # add an edge loop before adding the next one
+        if edgeLoopBeforeNext is not False:
+            self.addEdgeLoop(edge, edgeLoopBeforeNext, False)
+        self.verts += edge
+        self.edges.append(edge)
 
-    def addEdges(self, edges):
-        self.edges += edges
+    def addEdgeLoop(self, nextEdge, amount, after=True):
+        prevEdge = self.edges[-1]
+        d = distance(prevEdge[0], nextEdge[0])
+        lerpAmount = amount / d
+        if not after:
+            lerpAmount = 1.0 - lerpAmount
+        edge = lerpEdge(prevEdge, nextEdge, lerpAmount)
+        self.verts += edge
+        self.edges.append(edge)
 
-    def addFaces(self, faces):
-        self.faces += faces
-
-    def addRow(self, row):
-        nextRow = row[:]
-        self.verts += nextRow
-        self.faces += self.getFaces()
-        self.currentRow = nextRow[:]
-        self.indexOffset += self.verticesPerRow
-
-    def addVerts(self, verts):
-        self.verts += verts
-
-    def getFaces(self):
-        indexOffset = self.indexOffset
-        rLen = self.verticesPerRow
+    def getFaces(self, indexOffset, verticesPerEdge):
         faces = []
-        for i in range(rLen):
+        for i in range(verticesPerEdge):
             v1 = i
             v2 = i + 1
-            v3 = i + 1 + rLen
-            v4 = i + rLen
-            if v2 >= rLen:
+            v3 = i + 1 + verticesPerEdge
+            v4 = i + verticesPerEdge
+            if v2 >= verticesPerEdge:
                 v2 = 0
-                v3 = rLen
+                v3 = verticesPerEdge
             faces.append((v1+indexOffset, v2+indexOffset, v3+indexOffset, v4+indexOffset))
         return faces
+
+    # join all the edges together
+    def makeFaces(self):
+        verticesPerEdge = len(self.edges[0])
+        # add the first edge's face
+        self.faces.append(range(verticesPerEdge))
+        # add faces for subsequent edges
+        indexOffset = 0
+        for i, edge in enumerate(self.edges):
+            if i > 0:
+                faces = self.getFaces(indexOffset, verticesPerEdge)
+                self.faces += faces
+                indexOffset += verticesPerEdge
 
 class Vector:
 
@@ -107,68 +180,47 @@ class Vector:
         return (self.t[0]+t2[0], self.t[1]+t2[1], self.t[2]+t2[2])
 
 # determine center
-radius = CFG["diameter"] * 0.5
-c = (radius, radius, 0)
-
-# define start shape: a square base with 16 vertices
-bd = CFG["baseDiameter"] * CFG["diameter"]
-halfBd = bd * 0.5
-baseOrigin = (c[0]-halfBd, c[1]-halfBd, 0)
-bo = Vector(baseOrigin)
-edge = CFG["edge"]
-vRowStart = [
-    bo.t, bo.add((edge, 0, 0)), bo.add((halfBd, 0, 0)), bo.add((bd-edge, 0, 0)),
-    bo.add((bd, 0, 0)), bo.add((bd, edge, 0)), bo.add((bd, halfBd, 0)), bo.add((bd, bd-edge, 0)),
-    bo.add((bd, bd, 0)), bo.add((bd-edge, bd, 0)), bo.add((halfBd, bd, 0)), bo.add((edge, bd, 0)),
-    bo.add((0, bd, 0)), bo.add((0, bd-edge, 0)), bo.add((0, halfBd, 0)), bo.add((0, edge, 0))
-]
-verticesPerRow = len(vRowStart)
-
-# define end shape: a circle with 16 vertices
-angleStart = -135
-angleStep = 360.0 / verticesPerRow
-height = CFG["height"]
-vRowEnd = []
-for i in range(verticesPerRow):
-    angle = angleStart + angleStep * i
-    p = translatePoint(c, angle, radius)
-    vRowEnd.append((p[0], p[1], height))
-
-# inset the starting row to avoid n-gon weirdness
-insetScale = 0.5
-insetDiameter = bd * insetScale
-insetOffset = (bd - insetDiameter) * 0.5
-vRowBaseInset = transform(vRowStart, (insetScale, insetScale, 1.0), (insetOffset, insetOffset, 0))
+halfWidth = TOP_WIDTH
+CENTER = (halfWidth, halfWidth, 0)
 
 # init mesh
-# model will start at base inset, then move out and up
-mesh = Mesh(vRowBaseInset)
+mesh = Mesh()
 
-# add base inner edge
-innerDiameter = bd - edge * 2
-innerScale = innerDiameter / bd
-vRowBaseInner = transform(vRowStart, (innerScale, innerScale, 1.0), (edge, edge, 0))
-mesh.addRow(vRowBaseInner)
+# create base inset as a circle which will be the first face
+baseInset = circle(VERTICES_PER_EDGE, CENTER, BASE_INSET_DIAMETER * 0.5, BASE_INSET_HEIGHT)
+mesh.addEdge(baseInset)
 
-# add base row
-mesh.addRow(vRowStart)
+# move down and out to base inner
+baseInner = circle(VERTICES_PER_EDGE, CENTER, BASE_INNER_DIAMETER * 0.5, 0)
+mesh.addEdge(baseInner)
 
-# add base outer edge
-lerpAmount = edge / height
-vRowBaseOuter = lerpRow(vRowStart, vRowEnd, lerpAmount)
-mesh.addRow(vRowBaseOuter)
+# move out to base outer
+baseOuter = circle(VERTICES_PER_EDGE, CENTER, BASE_OUTER_DIAMETER * 0.5, 0)
+mesh.addEdge(baseOuter, EDGE_LOOP, EDGE_LOOP)
 
-# add top outer edge
-lerpAmount = (height - edge) / height
-vRowTopOuter = lerpRow(vRowStart, vRowEnd, lerpAmount)
-mesh.addRow(vRowTopOuter)
+# move up to base
+base = circle(VERTICES_PER_EDGE, CENTER, BASE_OUTER_DIAMETER * 0.5, BASE_HEIGHT)
+mesh.addEdge(base, EDGE_LOOP, EDGE_LOOP)
 
-# add top
-mesh.addRow(vRowEnd)
+# determine top edge so we can lerp to it
+top = roundedSquare(CENTER, TOP_WIDTH, HEIGHT, TOP_CORNER_RADIUS)
+
+# move up and out (lerp) to body
+
+# move up and out (lerp) to neck
+
+# move up and out (lerp) to top
+
+# solidify (duplicate, scale, translate, join)
+
+# fix normals
+
+# create faces from edges
+mesh.makeFaces()
 
 # save data
 data = [
-    {"name": "Cup", "verts": roundP(mesh.verts, PRECISION), "edges": [], "faces": mesh.faces, "location": [-radius, -radius, 0]}
+    {"name": "Cup", "verts": roundP(mesh.verts, PRECISION), "edges": [], "faces": mesh.faces, "location": [-halfWidth, -halfWidth, 0]}
 ]
 
 with open(OUTPUT_FILE, 'w') as f:

@@ -42,9 +42,10 @@ for d in data:
     edges = [tuple(v) for v in d["edges"]]
     faces = [tuple(f) for f in d["faces"]]
 
-    # Create mesh
+    # Create mesh and flip the first face
     mesh.from_pydata(verts, edges, faces)
     mesh.update(calc_edges=True)
+    mesh.polygons[0].flip()
 
     # Select the object
     obj.select = True
