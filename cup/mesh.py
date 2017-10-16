@@ -29,6 +29,9 @@ BASE_HEIGHT = 0.1 * HEIGHT
 BODY_HEIGHT = 0.167 * HEIGHT
 NECK_HEIGHT = 0.85 * HEIGHT
 
+print "Max height for text: %scm" % (NECK_HEIGHT - BASE_HEIGHT - THICKNESS)
+print "Max width for text: %scm" % (BODY_DIAMETER - THICKNESS * 2)
+
 def circle(vertices, center, radius, z):
     angleStart = -135
     angleStep = 360.0 / vertices
