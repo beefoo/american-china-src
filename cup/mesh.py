@@ -246,6 +246,11 @@ mesh.addEdgeLoop(innerNeck)
 innerBody = circle(VERTICES_PER_EDGE_LOOP, CENTER, BODY_DIAMETER * 0.5 - THICKNESS, BODY_HEIGHT)
 mesh.addEdgeLoop(innerBody)
 
+# TODO: make inner body tightly rounded square
+# TODO: break four inner body faces into quads
+# TODO: determine normals of inner body faces
+# TODO: displace quads with images
+
 # move in and down to inner base
 innerBase = circle(VERTICES_PER_EDGE_LOOP, CENTER, BASE_INNER_DIAMETER * 0.5 - THICKNESS, BASE_HEIGHT + THICKNESS)
 mesh.addEdgeLoop(innerBase)

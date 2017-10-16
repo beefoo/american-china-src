@@ -37,8 +37,7 @@ for row in range(rows+1):
             i = int(iy * imgW + ix)
             rgb = imgData[i]
             hls = colorsys.rgb_to_hls(rgb[0]/255.0, rgb[1]/255.0, rgb[2]/255.0)
-            if hls[1] < 0.5:
-                z = -DEPTH * (1.0 - hls[1])
+            z = -DEPTH * (1.0 - hls[1])
         verts.append((x,y,z))
 
 # generate faces

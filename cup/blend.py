@@ -5,6 +5,8 @@ import bpy
 import json
 import os
 
+bpy.app.debug_wm = True
+
 data = []
 with open(bpy.path.abspath("//mesh.json")) as f:
     data = json.load(f)
@@ -52,4 +54,4 @@ for d in data:
 
     # Add subsurf modifier
     obj.modifiers.new("subd", type='SUBSURF')
-    obj.modifiers['subd'].levels = 2
+    obj.modifiers['subd'].levels = 1
