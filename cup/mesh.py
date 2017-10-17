@@ -9,7 +9,8 @@ OUTPUT_FILE = "mesh.json"
 PRECISION = 3
 
 # cup config in cm
-VERTICES_PER_EDGE_LOOP = 16
+EDGES_PER_SIDE = 4 # needs to be an even number
+VERTICES_PER_EDGE_LOOP = EDGES_PER_SIDE * 4
 TOP_WIDTH = 8.2
 HEIGHT = 8.2
 EDGE_RADIUS = 0.2
@@ -41,6 +42,16 @@ def circle(vertices, center, radius, z):
         p = translatePoint(center, angle, radius)
         c.append((p[0], p[1], z))
     return c
+
+def circleMesh(edgesPerSide, center, radius, z):
+    # start with one point at the center
+    edgeLoops = [(center[0], center[1], z)]
+
+    edges = 2
+    while edges < edgesPerSide:
+        edges += 2
+
+    return edgeLoops
 
 def distance(p1, p2):
     x1, y1, z1 = p1
@@ -74,16 +85,56 @@ def lerpEdge(r1, r2, amt):
         lerpedEdge.append(tuple(p))
     return lerpedEdge
 
-def roundedSquare(c, w, z, r):
+def roundedSquare(edgesPerSide, c, w, z, r):
+    square = []
+
     hw = w * 0.5
-    baseOrigin = (c[0]-hw, c[1]-hw, z)
-    bo = Vector(baseOrigin)
-    square = [
-        bo.t, bo.add((r, 0, 0)), bo.add((hw, 0, 0)), bo.add((w-r, 0, 0)),
-        bo.add((w, 0, 0)), bo.add((w, r, 0)), bo.add((w, hw, 0)), bo.add((w, w-r, 0)),
-        bo.add((w, w, 0)), bo.add((w-r, w, 0)), bo.add((hw, w, 0)), bo.add((r, w, 0)),
-        bo.add((0, w, 0)), bo.add((0, w-r, 0)), bo.add((0, hw, 0)), bo.add((0, r, 0))
-    ]
+    verticesAdd = edgesPerSide - 3
+
+    # top side
+    y = c[1] - hw
+    x0 = c[0] - hw
+    x0c = x0 + r
+    x1c = c[0] + hw - r
+    square += [(x0, y, z), (x0c, y, z)]
+    for i in range(verticesAdd):
+        x = lerp(x0c, x1c, 1.0*(i+1)/(verticesAdd+1))
+        square.append((x, y, z))
+    square.append((x1c, y, z))
+
+    # right side
+    x = c[0] + hw
+    y0 = c[1] - hw
+    y0c = y0 + r
+    y1c = c[1] + hw - r
+    square += [(x, y0, z), (x, y0c, z)]
+    for i in range(verticesAdd):
+        y = lerp(y0c, y1c, 1.0*(i+1)/(verticesAdd+1))
+        square.append((x, y, z))
+    square.append((x, y1c, z))
+
+    # bottom side
+    y = c[1] + hw
+    x0 = c[0] + hw
+    x0c = x0 - r
+    x1c = c[0] - hw + r
+    square += [(x0, y, z), (x0c, y, z)]
+    for i in range(verticesAdd):
+        x = lerp(x0c, x1c, 1.0*(i+1)/(verticesAdd+1))
+        square.append((x, y, z))
+    square.append((x1c, y, z))
+
+    # left side
+    x = c[0] - hw
+    y0 = c[1]+ hw
+    y0c = y0 - r
+    y1c = c[1] - hw + r
+    square += [(x, y0, z), (x, y0c, z)]
+    for i in range(verticesAdd):
+        y = lerp(y0c, y1c, 1.0*(i+1)/(verticesAdd+1))
+        square.append((x, y, z))
+    square.append((x, y1c, z))
+
     return square
 
 def roundP(vList, precision):
@@ -227,19 +278,19 @@ body = circle(VERTICES_PER_EDGE_LOOP, CENTER, BODY_DIAMETER * 0.5, BODY_HEIGHT)
 mesh.addEdgeLoop(body)
 
 # move up and out (lerp) to neck
-neck = roundedSquare(CENTER, NECK_DIAMETER, NECK_HEIGHT, TOP_CORNER_RADIUS)
+neck = roundedSquare(EDGES_PER_SIDE, CENTER, NECK_DIAMETER, NECK_HEIGHT, TOP_CORNER_RADIUS)
 mesh.addEdgeLoop(neck)
 
 # move up and out (lerp) to top
-top = roundedSquare(CENTER, TOP_WIDTH, HEIGHT, TOP_CORNER_RADIUS)
+top = roundedSquare(EDGES_PER_SIDE, CENTER, TOP_WIDTH, HEIGHT, TOP_CORNER_RADIUS)
 mesh.addEdgeLoop(top, EDGE_RADIUS)
 
 # move in to inner top
-innerTop = roundedSquare(CENTER, TOP_WIDTH-THICKNESS*2, HEIGHT, TOP_CORNER_RADIUS)
+innerTop = roundedSquare(EDGES_PER_SIDE, CENTER, TOP_WIDTH-THICKNESS*2, HEIGHT, TOP_CORNER_RADIUS)
 mesh.addEdgeLoop(innerTop, False, EDGE_RADIUS)
 
 # move in and down to inner neck
-innerNeck = roundedSquare(CENTER, NECK_DIAMETER-THICKNESS*2, NECK_HEIGHT, TOP_CORNER_RADIUS)
+innerNeck = roundedSquare(EDGES_PER_SIDE, CENTER, NECK_DIAMETER-THICKNESS*2, NECK_HEIGHT, TOP_CORNER_RADIUS)
 mesh.addEdgeLoop(innerNeck)
 
 # move in and down to inner body
@@ -250,6 +301,9 @@ mesh.addEdgeLoop(innerBody)
 # TODO: break four inner body faces into quads
 # TODO: determine normals of inner body faces
 # TODO: displace quads with images
+
+# TODO: flatten base
+# TODO: make circle mesh
 
 # move in and down to inner base
 innerBase = circle(VERTICES_PER_EDGE_LOOP, CENTER, BASE_INNER_DIAMETER * 0.5 - THICKNESS, BASE_HEIGHT + THICKNESS)
