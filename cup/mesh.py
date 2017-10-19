@@ -44,11 +44,57 @@ def circle(vertices, center, radius, z):
     return c
 
 def circleMesh(edgesPerSide, center, radius, z):
-    # start with one point at the center
-    edgeLoops = [(center[0], center[1], z)]
+    verts = []
+    edgeLength = radius * 2 / edgesPerSide
 
+    # create a square matrix of vertices mapped to circular disc coordinates (UV)
+    for row in range(edgesPerSide+1):
+        for col in range(edgesPerSide+1):
+            x = col * edgeLength - radius
+            y = row * edgeLength - radius
+            u = x * math.sqrt(1.0 - 0.5 * (y * y))
+            v = y * math.sqrt(1.0 - 0.5 * (x * x))
+            verts.append((u,v,z))
+
+    vertLen = len(verts)
+    centerIndex = int(vertLen / 2)
+    centerRow = edgesPerSide / 2
+    centerCol = edgesPerSide/ 2
+
+    # start with one point at the center
+    edgeLoops = [verts[centerIndex]]
+
+    # add loops until we reach outer loop
     edges = 2
-    while edges < edgesPerSide:
+    while edges <= edgesPerSide:
+        edgeLoop = []
+        r = edges/2
+        # add top
+        for i in range(edges):
+            row = centerRow - r
+            col = centerCol + lerp(-r, r, 1.0 * i / edges)
+            edgeLoop.append(verts[row*(edgesPerSide+1) + col])
+
+        # add right
+        for i in range(edges):
+            row = centerRow + lerp(-r, r, 1.0 * i / edges)
+            col = centerCol + r
+            edgeLoop.append(verts[row*(edgesPerSide+1) + col])
+
+        # add bottom
+        for i in range(edges):
+            row = centerRow + r
+            col = centerCol + lerp(r, -r, 1.0 * i / edges)
+            edgeLoop.append(verts[row*(edgesPerSide+1) + col])
+
+        # add left
+        for i in range(edges):
+            row = centerRow + lerp(r, -r, 1.0 * i / edges)
+            col = centerCol - r
+            edgeLoop.append(verts[row*(edgesPerSide+1) + col])
+
+        # add edges
+        edgeLoops.append(edgeLoop)
         edges += 2
 
     return edgeLoops
