@@ -45,9 +45,9 @@ def circle(vertices, center, radius, z):
         c.append((p[0], p[1], z))
     return c
 
-def circleMesh(edgesPerSide, center, radius, z):
+def circleMesh(vertices, center, radius, z, reverse=False):
     verts = []
-    diameter = radius * 2
+    edgesPerSide = vertices / 4
 
     # create a square matrix of vertices mapped to circular disc coordinates (UV)
     # https://stackoverflow.com/questions/13211595/how-can-i-convert-coordinates-on-a-circle-to-coordinates-on-a-square
@@ -107,6 +107,9 @@ def circleMesh(edgesPerSide, center, radius, z):
         # add edges
         edgeLoops.append(edgeLoop)
         edges += 2
+
+    if reverse:
+        edgeLoops = reversed(edgeLoops)
 
     return edgeLoops
 
@@ -221,17 +224,6 @@ def translatePoint(p, degrees, distance):
     y2 = p[1] + distance * math.sin(radians)
     return (x2, y2)
 
-def squareToCircle(points):
-    uv = []
-    for p in points:
-        x = p[0]
-        y = p[1]
-        z = p[2]
-        u = x * math.sqrt( 1 - y * y * 0.5 )
-        v = y * math.sqrt( 1 - x * x * 0.5 )
-        uv.append((u,v,z))
-    return uv
-
 class Mesh:
 
     def __init__(self):
@@ -256,6 +248,10 @@ class Mesh:
 
         self.edgeLoops.append(edge)
 
+    def addEdgeLoops(self, edges):
+        for edge in edges:
+            self.addEdgeLoop(edge)
+
     def addEdgeLoopHelper(self, nextEdge, amount, after=True):
         prevEdge = self.edgeLoops[-1]
         d = distance(prevEdge[0], nextEdge[0])
@@ -267,37 +263,81 @@ class Mesh:
         edge = lerpEdge(prevEdge, nextEdge, lerpAmount)
         self.edgeLoops.append(edge)
 
-    def getFacesFromEdgeLoops(self, indexOffset, verticesPerEdgeLoop):
+    def joinEdgeLoops(self, loopA, loopB, indexOffset):
         faces = []
-        for i in range(verticesPerEdgeLoop):
-            v1 = i
-            v2 = i + 1
-            v3 = i + 1 + verticesPerEdgeLoop
-            v4 = i + verticesPerEdgeLoop
-            if v2 >= verticesPerEdgeLoop:
-                v2 = 0
-                v3 = verticesPerEdgeLoop
-            faces.append((v1+indexOffset, v2+indexOffset, v3+indexOffset, v4+indexOffset))
-        return faces
+        aLen = len(loopA)
+        bLen = len(loopB)
+
+        # number of vertices differ
+        if abs(bLen - aLen) > 0:
+
+            # assume we're going from bigger to smaller
+            bigger = aLen
+            smaller = bLen
+            biggerOffset = indexOffset
+            smallerOffset = indexOffset + aLen
+
+            # going from smaller to bigger
+            if smaller > bigger:
+                bigger = bLen
+                smaller = aLen
+                smallerOffset = indexOffset
+                biggerOffset = indexOffset + aLen
+
+            edgesPerSide = bigger / 4
+
+            for i in range(bigger-4):
+                v1 = i + abs(i-1) / (edgesPerSide-1) + biggerOffset
+                v2 = v1 + 1
+                v3 = i + abs(i-1) / (edgesPerSide-1) - i/edgesPerSide * 2 + smallerOffset
+                v4 = v3 - 1
+
+                if i==0:
+                    v1 = biggerOffset
+                    v2 = v1 + 1
+                    v3 = smallerOffset
+                    v4 = bigger - 1 + biggerOffset
+
+                # special case for reach corner face
+                elif i % (edgesPerSide-1) == 0:
+                    v3 = v2 + 1
+
+                faces.append((v1, v2, v3, v4))
+
+        # equal number of vertices
+        else:
+            for i in range(aLen):
+                v1 = i
+                v2 = i + 1
+                v3 = i + 1 + aLen
+                v4 = i + aLen
+                if v2 >= aLen:
+                    v2 = 0
+                    v3 = aLen
+                faces.append((v1+indexOffset, v2+indexOffset, v3+indexOffset, v4+indexOffset))
+
+        self.faces += faces
 
     # join all the edge loop together
     def processEdgeloops(self):
-        verticesPerEdgeLoop = len(self.edgeLoops[0])
-        # add the first edge's face
-        self.faces.append(range(verticesPerEdgeLoop))
-        # add faces for subsequent edges
         indexOffset = 0
+
         for i, edgeLoop in enumerate(self.edgeLoops):
-            # add vertices
+            # add loop's vertices
             self.verts += edgeLoop
-            if i > 0:
-                # add faces
-                faces = self.getFacesFromEdgeLoops(indexOffset, verticesPerEdgeLoop)
-                self.faces += faces
-                indexOffset += verticesPerEdgeLoop
-        # add the last edge's face
-        indexOffset = len(self.verts) - verticesPerEdgeLoop
-        self.faces.append([(i+indexOffset) for i in range(verticesPerEdgeLoop)])
+
+            # if this is the first edge loop and it's a quad, add it's face
+            if i == 0 and len(edgeLoop) == 4:
+                self.faces.append(range(4))
+
+            elif i > 0:
+                prev = self.edgeLoops[i-1]
+                self.joinEdgeLoops(prev, edgeLoop, indexOffset)
+                indexOffset += len(prev)
+
+        # if the last edge loop is a quad, add it's face
+        if len(self.edgeLoops[-1]) == 4:
+            self.faces.append([(i+indexOffset) for i in range(4)])
 
 class Vector:
 
@@ -315,59 +355,94 @@ CENTER = (halfWidth, halfWidth, 0)
 mesh = Mesh()
 
 # create base inset as a circle which will be the first face
-baseInset = circle(VERTICES_PER_EDGE_LOOP, CENTER, BASE_INSET_DIAMETER * 0.5, BASE_INSET_HEIGHT)
-mesh.addEdgeLoop(baseInset)
+baseInset = circleMesh(VERTICES_PER_EDGE_LOOP, CENTER, BASE_INSET_DIAMETER * 0.5, BASE_INSET_HEIGHT)
+mesh.addEdgeLoops(baseInset)
 
-# move down and out to base inner
-baseInner = circle(VERTICES_PER_EDGE_LOOP, CENTER, BASE_INNER_DIAMETER * 0.5, 0)
-mesh.addEdgeLoop(baseInner, False, EDGE_RADIUS)
-
-# move out to base outer
-baseOuter = circle(VERTICES_PER_EDGE_LOOP, CENTER, BASE_OUTER_DIAMETER * 0.5, 0)
-mesh.addEdgeLoop(baseOuter, EDGE_RADIUS, EDGE_RADIUS)
-
-# move up to base
-base = circle(VERTICES_PER_EDGE_LOOP, CENTER, BASE_OUTER_DIAMETER * 0.5, BASE_HEIGHT)
-mesh.addEdgeLoop(base, EDGE_RADIUS, EDGE_RADIUS)
-
-# move up and out (lerp) to body
-body = circle(VERTICES_PER_EDGE_LOOP, CENTER, BODY_DIAMETER * 0.5, BODY_HEIGHT)
-mesh.addEdgeLoop(body)
-
-# move up and out (lerp) to neck
-neck = roundedSquare(EDGES_PER_SIDE, CENTER, NECK_DIAMETER, NECK_HEIGHT, TOP_CORNER_RADIUS)
-mesh.addEdgeLoop(neck)
-
-# move up and out (lerp) to top
-top = roundedSquare(EDGES_PER_SIDE, CENTER, TOP_WIDTH, HEIGHT, TOP_CORNER_RADIUS)
-mesh.addEdgeLoop(top, EDGE_RADIUS)
-
-# move in to inner top
-innerTop = roundedSquare(EDGES_PER_SIDE, CENTER, TOP_WIDTH-THICKNESS*2, HEIGHT, TOP_CORNER_RADIUS)
-mesh.addEdgeLoop(innerTop, False, EDGE_RADIUS)
-
-# move in and down to inner neck
-innerNeck = roundedSquare(EDGES_PER_SIDE, CENTER, NECK_DIAMETER-THICKNESS*2, NECK_HEIGHT, TOP_CORNER_RADIUS)
-mesh.addEdgeLoop(innerNeck)
-
-# move in and down to inner body
-innerBody = circle(VERTICES_PER_EDGE_LOOP, CENTER, BODY_DIAMETER * 0.5 - THICKNESS, BODY_HEIGHT)
-mesh.addEdgeLoop(innerBody)
-
-# TODO: make inner body tightly rounded square
-# TODO: break four inner body faces into quads
-# TODO: determine normals of inner body faces
-# TODO: displace quads with images
-
-# TODO: flatten base
-# TODO: make circle mesh
-
-# move in and down to inner base
-innerBase = circle(VERTICES_PER_EDGE_LOOP, CENTER, BASE_INNER_DIAMETER * 0.5 - THICKNESS, BASE_HEIGHT + THICKNESS)
-mesh.addEdgeLoop(innerBase)
+# # move down and out to base inner
+# baseInner = circle(VERTICES_PER_EDGE_LOOP, CENTER, BASE_INNER_DIAMETER * 0.5, 0)
+# mesh.addEdgeLoop(baseInner, False, EDGE_RADIUS)
+#
+# # move out to base outer
+# baseOuter = circle(VERTICES_PER_EDGE_LOOP, CENTER, BASE_OUTER_DIAMETER * 0.5, 0)
+# mesh.addEdgeLoop(baseOuter, EDGE_RADIUS, EDGE_RADIUS)
+#
+# # move up to base
+# base = circle(VERTICES_PER_EDGE_LOOP, CENTER, BASE_OUTER_DIAMETER * 0.5, BASE_HEIGHT)
+# mesh.addEdgeLoop(base, EDGE_RADIUS, EDGE_RADIUS)
+#
+# # move up and out (lerp) to body
+# body = circle(VERTICES_PER_EDGE_LOOP, CENTER, BODY_DIAMETER * 0.5, BODY_HEIGHT)
+# mesh.addEdgeLoop(body)
+#
+# # move up and out (lerp) to neck
+# neck = roundedSquare(EDGES_PER_SIDE, CENTER, NECK_DIAMETER, NECK_HEIGHT, TOP_CORNER_RADIUS)
+# mesh.addEdgeLoop(neck)
+#
+# # move up and out (lerp) to top
+# top = roundedSquare(EDGES_PER_SIDE, CENTER, TOP_WIDTH, HEIGHT, TOP_CORNER_RADIUS)
+# mesh.addEdgeLoop(top, EDGE_RADIUS)
+#
+# # move in to inner top
+# innerTop = roundedSquare(EDGES_PER_SIDE, CENTER, TOP_WIDTH-THICKNESS*2, HEIGHT, TOP_CORNER_RADIUS)
+# mesh.addEdgeLoop(innerTop, False, EDGE_RADIUS)
+#
+# # move in and down to inner neck
+# innerNeck = roundedSquare(EDGES_PER_SIDE, CENTER, NECK_DIAMETER-THICKNESS*2, NECK_HEIGHT, TOP_CORNER_RADIUS)
+# mesh.addEdgeLoop(innerNeck)
+#
+# # move in and down to inner body
+# innerBody = circle(VERTICES_PER_EDGE_LOOP, CENTER, BODY_DIAMETER * 0.5 - THICKNESS, BODY_HEIGHT)
+# mesh.addEdgeLoop(innerBody)
+#
+# # TODO: make inner body tightly rounded square
+# # TODO: break four inner body faces into quads
+# # TODO: determine normals of inner body faces
+# # TODO: displace quads with images
+#
+# # TODO: flatten base
+# # TODO: make circle mesh
+#
+# innerBase = circleMesh(VERTICES_PER_EDGE_LOOP, CENTER, BASE_INNER_DIAMETER * 0.5 - THICKNESS, BASE_HEIGHT + THICKNESS, True)
+# mesh.addEdgeLoops(innerBase)
 
 # create faces from edges
 mesh.processEdgeloops()
+
+
+
+
+faces = mesh.faces
+verts = mesh.verts
+
+
+
+ppcm = 100
+im = Image.new("RGB", (int(TOP_WIDTH*ppcm+20), int(TOP_WIDTH*ppcm+20)), (255,255,255))
+draw = ImageDraw.Draw(im)
+colors = [(0,0,0), (255,0,0), (0,255,0), (0,0,255), (255,0,255), (100,100,0), (0,255,255)]
+
+for i, vert in enumerate(verts):
+    draw.point((vert[0] * ppcm, vert[1] * ppcm), fill=(0,0,0))
+
+for i, face in enumerate(faces):
+    if i >= 4:
+        break
+    print i
+    pprint(face)
+
+    color = colors[i % len(colors)]
+    v1 = (verts[face[0]][0] * ppcm, verts[face[0]][1] * ppcm)
+    v2 = (verts[face[1]][0] * ppcm, verts[face[1]][1] * ppcm)
+    v3 = (verts[face[2]][0] * ppcm, verts[face[2]][1] * ppcm)
+    v4 = (verts[face[3]][0] * ppcm, verts[face[3]][1] * ppcm)
+    draw.line((v1[0], v1[1], v2[0], v2[1]), fill=color)
+    draw.line((v2[0], v2[1], v3[0], v3[1]), fill=color)
+    draw.line((v3[0], v3[1], v4[0], v4[1]), fill=color)
+    draw.line((v4[0], v4[1], v1[0], v1[1]), fill=color)
+
+del draw
+im.save("circleMesh.png")
+sys.exit(1)
 
 # save data
 data = [

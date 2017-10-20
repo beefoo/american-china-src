@@ -5,6 +5,7 @@ import bpy
 import json
 import os
 
+DEBUG_MESH = True
 bpy.app.debug_wm = True
 
 data = []
@@ -46,12 +47,20 @@ for d in data:
 
     # Create mesh and flip the first face
     mesh.from_pydata(verts, edges, faces)
-    mesh.update(calc_edges=True)
-    mesh.polygons[0].flip()
 
-    # Select the object
-    obj.select = True
+    if DEBUG_MESH:
+        isValid = mesh.validate(verbose=True)
+        if isValid:
+            print("Valid mesh")
 
-    # Add subsurf modifier
-    obj.modifiers.new("subd", type='SUBSURF')
-    obj.modifiers['subd'].levels = 1
+    else:
+
+        mesh.update(calc_edges=True)
+        mesh.polygons[0].flip()
+
+        # Select the object
+        obj.select = True
+
+        # Add subsurf modifier
+        obj.modifiers.new("subd", type='SUBSURF')
+        obj.modifiers['subd'].levels = 1
