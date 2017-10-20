@@ -2,11 +2,13 @@
 
 import json
 import math
+from PIL import Image, ImageDraw
+from pprint import pprint
 import sys
 
 # data config
 OUTPUT_FILE = "mesh.json"
-PRECISION = 3
+PRECISION = 5
 
 # cup config in cm
 EDGES_PER_SIDE = 4 # needs to be an even number
@@ -45,15 +47,20 @@ def circle(vertices, center, radius, z):
 
 def circleMesh(edgesPerSide, center, radius, z):
     verts = []
-    edgeLength = radius * 2 / edgesPerSide
+    diameter = radius * 2
 
     # create a square matrix of vertices mapped to circular disc coordinates (UV)
+    # https://stackoverflow.com/questions/13211595/how-can-i-convert-coordinates-on-a-circle-to-coordinates-on-a-square
     for row in range(edgesPerSide+1):
         for col in range(edgesPerSide+1):
-            x = col * edgeLength - radius
-            y = row * edgeLength - radius
+            # x, y is between -1 and 1
+            x = 1.0 * col / edgesPerSide * 2 - 1
+            y = 1.0 * row / edgesPerSide * 2 - 1
             u = x * math.sqrt(1.0 - 0.5 * (y * y))
             v = y * math.sqrt(1.0 - 0.5 * (x * x))
+            # convert to actual unit
+            u = u * radius + center[0]
+            v = v * radius + center[1]
             verts.append((u,v,z))
 
     vertLen = len(verts)
@@ -62,7 +69,7 @@ def circleMesh(edgesPerSide, center, radius, z):
     centerCol = edgesPerSide/ 2
 
     # start with one point at the center
-    edgeLoops = [verts[centerIndex]]
+    edgeLoops = [[verts[centerIndex]]]
 
     # add loops until we reach outer loop
     edges = 2
@@ -73,25 +80,29 @@ def circleMesh(edgesPerSide, center, radius, z):
         for i in range(edges):
             row = centerRow - r
             col = centerCol + lerp(-r, r, 1.0 * i / edges)
-            edgeLoop.append(verts[row*(edgesPerSide+1) + col])
+            i = int(row*(edgesPerSide+1) + col)
+            edgeLoop.append(verts[i])
 
         # add right
         for i in range(edges):
             row = centerRow + lerp(-r, r, 1.0 * i / edges)
             col = centerCol + r
-            edgeLoop.append(verts[row*(edgesPerSide+1) + col])
+            i = int(row*(edgesPerSide+1) + col)
+            edgeLoop.append(verts[i])
 
         # add bottom
         for i in range(edges):
             row = centerRow + r
             col = centerCol + lerp(r, -r, 1.0 * i / edges)
-            edgeLoop.append(verts[row*(edgesPerSide+1) + col])
+            i = int(row*(edgesPerSide+1) + col)
+            edgeLoop.append(verts[i])
 
         # add left
         for i in range(edges):
             row = centerRow + lerp(r, -r, 1.0 * i / edges)
             col = centerCol - r
-            edgeLoop.append(verts[row*(edgesPerSide+1) + col])
+            i = int(row*(edgesPerSide+1) + col)
+            edgeLoop.append(verts[i])
 
         # add edges
         edgeLoops.append(edgeLoop)
@@ -297,7 +308,7 @@ class Vector:
         return (self.t[0]+t2[0], self.t[1]+t2[1], self.t[2]+t2[2])
 
 # determine center
-halfWidth = TOP_WIDTH
+halfWidth = TOP_WIDTH * 0.5
 CENTER = (halfWidth, halfWidth, 0)
 
 # init mesh
