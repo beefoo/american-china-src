@@ -11,7 +11,7 @@ OUTPUT_FILE = "mesh.json"
 PRECISION = 5
 
 # cup config in cm
-EDGES_PER_SIDE = 4 # needs to be an even number
+EDGES_PER_SIDE = 4 # needs to be power of 2
 VERTICES_PER_EDGE_LOOP = EDGES_PER_SIDE * 4
 TOP_WIDTH = 8.2
 HEIGHT = 8.2
@@ -287,11 +287,13 @@ class Mesh:
             edgesPerSide = bigger / 4
 
             for i in range(bigger-4):
-                v1 = i + abs(i-1) / (edgesPerSide-1) + biggerOffset
+                offset = abs(i-1) / (edgesPerSide-1)
+                v1 = i + offset + biggerOffset
                 v2 = v1 + 1
-                v3 = i + abs(i-1) / (edgesPerSide-1) - i/edgesPerSide * 2 + smallerOffset
+                v3 = i + offset - offset * 2 + smallerOffset
                 v4 = v3 - 1
 
+                # special case for first
                 if i==0:
                     v1 = biggerOffset
                     v2 = v1 + 1
@@ -301,6 +303,12 @@ class Mesh:
                 # special case for reach corner face
                 elif i % (edgesPerSide-1) == 0:
                     v3 = v2 + 1
+
+                # special case for last
+                elif i==(bigger-5):
+                    v3 = smallerOffset
+
+
 
                 faces.append((v1, v2, v3, v4))
 
@@ -358,95 +366,66 @@ mesh = Mesh()
 baseInset = circleMesh(VERTICES_PER_EDGE_LOOP, CENTER, BASE_INSET_DIAMETER * 0.5, BASE_INSET_HEIGHT)
 mesh.addEdgeLoops(baseInset)
 
-# # move down and out to base inner
-# baseInner = circle(VERTICES_PER_EDGE_LOOP, CENTER, BASE_INNER_DIAMETER * 0.5, 0)
-# mesh.addEdgeLoop(baseInner, False, EDGE_RADIUS)
-#
-# # move out to base outer
-# baseOuter = circle(VERTICES_PER_EDGE_LOOP, CENTER, BASE_OUTER_DIAMETER * 0.5, 0)
-# mesh.addEdgeLoop(baseOuter, EDGE_RADIUS, EDGE_RADIUS)
-#
-# # move up to base
-# base = circle(VERTICES_PER_EDGE_LOOP, CENTER, BASE_OUTER_DIAMETER * 0.5, BASE_HEIGHT)
-# mesh.addEdgeLoop(base, EDGE_RADIUS, EDGE_RADIUS)
-#
-# # move up and out (lerp) to body
-# body = circle(VERTICES_PER_EDGE_LOOP, CENTER, BODY_DIAMETER * 0.5, BODY_HEIGHT)
-# mesh.addEdgeLoop(body)
-#
-# # move up and out (lerp) to neck
-# neck = roundedSquare(EDGES_PER_SIDE, CENTER, NECK_DIAMETER, NECK_HEIGHT, TOP_CORNER_RADIUS)
-# mesh.addEdgeLoop(neck)
-#
-# # move up and out (lerp) to top
-# top = roundedSquare(EDGES_PER_SIDE, CENTER, TOP_WIDTH, HEIGHT, TOP_CORNER_RADIUS)
-# mesh.addEdgeLoop(top, EDGE_RADIUS)
-#
-# # move in to inner top
-# innerTop = roundedSquare(EDGES_PER_SIDE, CENTER, TOP_WIDTH-THICKNESS*2, HEIGHT, TOP_CORNER_RADIUS)
-# mesh.addEdgeLoop(innerTop, False, EDGE_RADIUS)
-#
-# # move in and down to inner neck
-# innerNeck = roundedSquare(EDGES_PER_SIDE, CENTER, NECK_DIAMETER-THICKNESS*2, NECK_HEIGHT, TOP_CORNER_RADIUS)
-# mesh.addEdgeLoop(innerNeck)
-#
-# # move in and down to inner body
-# innerBody = circle(VERTICES_PER_EDGE_LOOP, CENTER, BODY_DIAMETER * 0.5 - THICKNESS, BODY_HEIGHT)
-# mesh.addEdgeLoop(innerBody)
-#
-# # TODO: make inner body tightly rounded square
-# # TODO: break four inner body faces into quads
-# # TODO: determine normals of inner body faces
-# # TODO: displace quads with images
-#
-# # TODO: flatten base
-# # TODO: make circle mesh
-#
-# innerBase = circleMesh(VERTICES_PER_EDGE_LOOP, CENTER, BASE_INNER_DIAMETER * 0.5 - THICKNESS, BASE_HEIGHT + THICKNESS, True)
-# mesh.addEdgeLoops(innerBase)
+# move down and out to base inner
+baseInner = circle(VERTICES_PER_EDGE_LOOP, CENTER, BASE_INNER_DIAMETER * 0.5, 0)
+mesh.addEdgeLoop(baseInner, False, EDGE_RADIUS)
+
+# move out to base outer
+baseOuter = circle(VERTICES_PER_EDGE_LOOP, CENTER, BASE_OUTER_DIAMETER * 0.5, 0)
+mesh.addEdgeLoop(baseOuter, EDGE_RADIUS, EDGE_RADIUS)
+
+# move up to base
+base = circle(VERTICES_PER_EDGE_LOOP, CENTER, BASE_OUTER_DIAMETER * 0.5, BASE_HEIGHT)
+mesh.addEdgeLoop(base, EDGE_RADIUS, EDGE_RADIUS)
+
+# move up and out (lerp) to body
+body = circle(VERTICES_PER_EDGE_LOOP, CENTER, BODY_DIAMETER * 0.5, BODY_HEIGHT)
+mesh.addEdgeLoop(body)
+
+# move up and out (lerp) to neck
+neck = roundedSquare(EDGES_PER_SIDE, CENTER, NECK_DIAMETER, NECK_HEIGHT, TOP_CORNER_RADIUS)
+mesh.addEdgeLoop(neck)
+
+# move up and out (lerp) to top
+top = roundedSquare(EDGES_PER_SIDE, CENTER, TOP_WIDTH, HEIGHT, TOP_CORNER_RADIUS)
+mesh.addEdgeLoop(top, EDGE_RADIUS)
+
+# move in to inner top
+innerTop = roundedSquare(EDGES_PER_SIDE, CENTER, TOP_WIDTH-THICKNESS*2, HEIGHT, TOP_CORNER_RADIUS)
+mesh.addEdgeLoop(innerTop, False, EDGE_RADIUS)
+
+# move in and down to inner neck
+innerNeck = roundedSquare(EDGES_PER_SIDE, CENTER, NECK_DIAMETER-THICKNESS*2, NECK_HEIGHT, TOP_CORNER_RADIUS)
+mesh.addEdgeLoop(innerNeck)
+
+# move in and down to inner body
+innerBody = circle(VERTICES_PER_EDGE_LOOP, CENTER, BODY_DIAMETER * 0.5 - THICKNESS, BODY_HEIGHT)
+mesh.addEdgeLoop(innerBody)
+
+# TODO: make inner body tightly rounded square
+# TODO: break four inner body faces into quads
+# TODO: determine normals of inner body faces
+# TODO: displace quads with images
+
+# TODO: flatten base
+# TODO: make circle mesh
+
+innerBase = circleMesh(VERTICES_PER_EDGE_LOOP, CENTER, BASE_INNER_DIAMETER * 0.5 - THICKNESS, BASE_HEIGHT + THICKNESS, True)
+mesh.addEdgeLoops(innerBase)
 
 # create faces from edges
 mesh.processEdgeloops()
 
-
-
-
-faces = mesh.faces
-verts = mesh.verts
-
-
-
-ppcm = 100
-im = Image.new("RGB", (int(TOP_WIDTH*ppcm+20), int(TOP_WIDTH*ppcm+20)), (255,255,255))
-draw = ImageDraw.Draw(im)
-colors = [(0,0,0), (255,0,0), (0,255,0), (0,0,255), (255,0,255), (100,100,0), (0,255,255)]
-
-for i, vert in enumerate(verts):
-    draw.point((vert[0] * ppcm, vert[1] * ppcm), fill=(0,0,0))
-
-for i, face in enumerate(faces):
-    if i >= 4:
-        break
-    print i
-    pprint(face)
-
-    color = colors[i % len(colors)]
-    v1 = (verts[face[0]][0] * ppcm, verts[face[0]][1] * ppcm)
-    v2 = (verts[face[1]][0] * ppcm, verts[face[1]][1] * ppcm)
-    v3 = (verts[face[2]][0] * ppcm, verts[face[2]][1] * ppcm)
-    v4 = (verts[face[3]][0] * ppcm, verts[face[3]][1] * ppcm)
-    draw.line((v1[0], v1[1], v2[0], v2[1]), fill=color)
-    draw.line((v2[0], v2[1], v3[0], v3[1]), fill=color)
-    draw.line((v3[0], v3[1], v4[0], v4[1]), fill=color)
-    draw.line((v4[0], v4[1], v1[0], v1[1]), fill=color)
-
-del draw
-im.save("circleMesh.png")
-sys.exit(1)
-
 # save data
 data = [
-    {"name": "Cup", "verts": roundP(mesh.verts, PRECISION), "edges": [], "faces": mesh.faces, "location": [-halfWidth, -halfWidth, 0]}
+    {
+        "name": "Cup",
+        "verts": roundP(mesh.verts, PRECISION),
+        "edges": [],
+        "faces": mesh.faces,
+        "location": [-halfWidth, -halfWidth, 0],
+        "flipFaces": range(EDGES_PER_SIDE * EDGES_PER_SIDE)
+    }
 ]
 
 with open(OUTPUT_FILE, 'w') as f:
