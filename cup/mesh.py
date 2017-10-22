@@ -400,20 +400,20 @@ mesh.addEdgeLoop(innerTop, False, EDGE_RADIUS)
 
 # move in and down to inner neck
 innerNeck = roundedSquare(EDGES_PER_SIDE, CENTER, NECK_DIAMETER-THICKNESS*2, NECK_HEIGHT, TOP_CORNER_RADIUS)
-mesh.addEdgeLoop(innerNeck)
 
 # move in and down to inner body
-innerBody = roundedSquare(EDGES_PER_SIDE, CENTER, BODY_INNER_DIAMETER, INNER_BODY_HEIGHT, TOP_CORNER_RADIUS)
-mesh.addEdgeLoop(innerBody)
+innerBody = circle(VERTICES_PER_EDGE_LOOP, CENTER, BODY_INNER_DIAMETER * 0.5, INNER_BODY_HEIGHT)
 
-# TODO: break four inner body faces into quads
-# TODO: determine normals of inner body faces
-# TODO: displace quads with images
+# retrieve image data
 
-# TODO: flatten base
-# TODO: make circle mesh
+# lerp from neck to body
+for i in range(EDGES_PER_SIDE-1):
+    amt = 1.0 * i / (EDGES_PER_SIDE-2)
+    edgeLoop = lerpEdge(innerNeck, innerBody, amt)
+    mesh.addEdgeLoop(edgeLoop)
 
-innerBase = circleMesh(VERTICES_PER_EDGE_LOOP, CENTER, INNER_BASE_DIAMETER * 0.5, INNER_BODY_HEIGHT, True)
+# move in and down to inner base
+innerBase = circleMesh(VERTICES_PER_EDGE_LOOP, CENTER, INNER_BASE_DIAMETER * 0.5, INNER_BASE_HEIGHT, True)
 mesh.addEdgeLoops(innerBase)
 
 # create faces from edges
