@@ -44,11 +44,13 @@ for d in data:
     edges = [tuple(v) for v in d["edges"]]
     faces = [tuple(f) for f in d["faces"]]
 
-    # Create mesh and flip the first face
+    # Create mesh from data
     mesh.from_pydata(verts, edges, faces)
 
+    # Calculate the edges
     mesh.update(calc_edges=True)
 
+    # Flip some of the faces
     for i in d["flipFaces"]:
         mesh.polygons[i].flip()
 

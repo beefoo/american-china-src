@@ -11,12 +11,12 @@ OUTPUT_FILE = "mesh.json"
 PRECISION = 5
 
 # cup config in cm
-EDGES_PER_SIDE = 4 # needs to be power of 2
+EDGES_PER_SIDE = 4 # 4, 128, 256, needs to be power of 2, needs to be high-res for letter displacement
 VERTICES_PER_EDGE_LOOP = EDGES_PER_SIDE * 4
 TOP_WIDTH = 8.2
 HEIGHT = 8.2
-EDGE_RADIUS = 0.2
-TOP_CORNER_RADIUS = 1.0
+EDGE_RADIUS = 0.25
+TOP_CORNER_RADIUS = 1.2
 THICKNESS = 0.6
 
 # relative widths
@@ -25,12 +25,16 @@ BASE_INNER_DIAMETER = 0.667 * BASE_OUTER_DIAMETER
 BASE_INSET_DIAMETER = 0.8 * BASE_INNER_DIAMETER
 BODY_DIAMETER = 1.0 * TOP_WIDTH
 NECK_DIAMETER = 0.9 * TOP_WIDTH
+BODY_INNER_DIAMETER = NECK_DIAMETER - THICKNESS * 2
+INNER_BASE_DIAMETER = BODY_INNER_DIAMETER * 0.5
 
 # relative heights
 BASE_INSET_HEIGHT = 0.25
 BASE_HEIGHT = 0.1 * HEIGHT
 BODY_HEIGHT = 0.167 * HEIGHT
 NECK_HEIGHT = 0.85 * HEIGHT
+INNER_BASE_HEIGHT = BASE_HEIGHT + THICKNESS
+INNER_BODY_HEIGHT = BODY_HEIGHT
 
 print "Max height for text: %scm" % (NECK_HEIGHT - BASE_HEIGHT - THICKNESS)
 print "Max width for text: %scm" % (BODY_DIAMETER - THICKNESS * 2)
@@ -399,10 +403,9 @@ innerNeck = roundedSquare(EDGES_PER_SIDE, CENTER, NECK_DIAMETER-THICKNESS*2, NEC
 mesh.addEdgeLoop(innerNeck)
 
 # move in and down to inner body
-innerBody = circle(VERTICES_PER_EDGE_LOOP, CENTER, BODY_DIAMETER * 0.5 - THICKNESS, BODY_HEIGHT)
+innerBody = roundedSquare(EDGES_PER_SIDE, CENTER, BODY_INNER_DIAMETER, INNER_BODY_HEIGHT, TOP_CORNER_RADIUS)
 mesh.addEdgeLoop(innerBody)
 
-# TODO: make inner body tightly rounded square
 # TODO: break four inner body faces into quads
 # TODO: determine normals of inner body faces
 # TODO: displace quads with images
@@ -410,7 +413,7 @@ mesh.addEdgeLoop(innerBody)
 # TODO: flatten base
 # TODO: make circle mesh
 
-innerBase = circleMesh(VERTICES_PER_EDGE_LOOP, CENTER, BASE_INNER_DIAMETER * 0.5 - THICKNESS, BASE_HEIGHT + THICKNESS, True)
+innerBase = circleMesh(VERTICES_PER_EDGE_LOOP, CENTER, INNER_BASE_DIAMETER * 0.5, INNER_BODY_HEIGHT, True)
 mesh.addEdgeLoops(innerBase)
 
 # create faces from edges
