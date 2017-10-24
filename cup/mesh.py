@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import colorsys
 import json
 import math
 from PIL import Image, ImageDraw
@@ -9,6 +10,12 @@ import sys
 # data config
 OUTPUT_FILE = "mesh.json"
 PRECISION = 5
+IMAGE_MAP_FILE = "imgMap.png"
+
+# retrieve image map data
+im = Image.open(IMAGE_MAP_FILE)
+IMAGE_MAP_W, IMAGE_MAP_H = im.size
+IMAGE_MAP = list(im.getdata())
 
 # cup config in cm
 EDGES_PER_SIDE = 4 # 4, 128, 256, needs to be power of 2, needs to be high-res for letter displacement
@@ -18,6 +25,7 @@ HEIGHT = 8.2
 EDGE_RADIUS = 0.25
 TOP_CORNER_RADIUS = 1.2
 THICKNESS = 0.6
+DISPLACEMENT_DEPTH = 0.25
 
 # relative widths
 BASE_OUTER_DIAMETER = 0.5 * TOP_WIDTH
@@ -116,6 +124,24 @@ def circleMesh(vertices, center, radius, z, reverse=False):
         edgeLoops = reversed(edgeLoops)
 
     return edgeLoops
+
+def displaceEdgeLoop(loop, loopBefore, loopAfter, pixelRow, depth):
+    displaced = []
+
+    for i, v in enumerate(loop):
+        x = 1.0 * i / (len(loop)-1)
+        j = x * (len(pixelRow)-1)
+        rgb = pixelRow[j]
+        hls = colorsys.rgb_to_hls(rgb[0]/255.0, rgb[1]/255.0, rgb[2]/255.0)
+        depth = depth * (1.0 - hls[1])
+        # TODO: get xy normal
+        # TODO: get xz normal
+        # TODO: get yz normal
+        # TODO: displace depth
+        displaced.append(v)
+
+    return displaced
+
 
 def distance(p1, p2):
     x1, y1, z1 = p1
@@ -236,36 +262,36 @@ class Mesh:
         self.faces = []
         self.edgeLoops = []
 
-        self.queueEdgeAfter = False
+        self.queueLoopAfter = False
 
-    def addEdgeLoop(self, edge, edgeBefore=False, edgeAfter=False):
+    def addEdgeLoop(self, loop, loopBefore=False, loopAfter=False):
         # add an edge loop after the previous one
-        if self.queueEdgeAfter is not False:
-            self.addEdgeLoopHelper(edge, self.queueEdgeAfter, True)
-            self.queueEdgeAfter = False
+        if self.queueLoopAfter is not False:
+            self.addEdgeLoopHelper(loop, self.queueLoopAfter, True)
+            self.queueLoopAfter = False
         # add an edge loop before the next one
-        if edgeBefore is not False:
-            self.addEdgeLoopHelper(edge, edgeBefore, False)
+        if loopBefore is not False:
+            self.addEdgeLoopHelper(loop, loopBefore, False)
         # add an edge loop after the next one
-        if edgeAfter is not False:
-            self.queueEdgeAfter = edgeAfter
+        if loopAfter is not False:
+            self.queueLoopAfter = loopAfter
 
-        self.edgeLoops.append(edge)
+        self.edgeLoops.append(loop)
 
-    def addEdgeLoops(self, edges):
-        for edge in edges:
-            self.addEdgeLoop(edge)
+    def addEdgeLoops(self, loops):
+        for loop in loops:
+            self.addEdgeLoop(loop)
 
-    def addEdgeLoopHelper(self, nextEdge, amount, after=True):
-        prevEdge = self.edgeLoops[-1]
-        d = distance(prevEdge[0], nextEdge[0])
+    def addEdgeLoopHelper(self, nextLoop, amount, after=True):
+        prevLoop = self.edgeLoops[-1]
+        d = distance(prevLoop[0], nextLoop[0])
         lerpAmount = amount / d
         if lerpAmount >= 0.5:
             return False
         if not after:
             lerpAmount = 1.0 - lerpAmount
-        edge = lerpEdge(prevEdge, nextEdge, lerpAmount)
-        self.edgeLoops.append(edge)
+        loop = lerpEdge(prevLoop, nextLoop, lerpAmount)
+        self.edgeLoops.append(loop)
 
     def joinEdgeLoops(self, loopA, loopB, indexOffset):
         faces = []
@@ -405,9 +431,21 @@ innerNeck = roundedSquare(EDGES_PER_SIDE, CENTER, NECK_DIAMETER-THICKNESS*2, NEC
 innerBody = circle(VERTICES_PER_EDGE_LOOP, CENTER, BODY_INNER_DIAMETER * 0.5, INNER_BODY_HEIGHT)
 
 # lerp from neck to body
+lerpedEdgeLoops = []
 for i in range(EDGES_PER_SIDE):
     amt = 1.0 * i / (EDGES_PER_SIDE-1)
     edgeLoop = lerpEdge(innerNeck, innerBody, amt)
+    lerpedEdgeLoops.append(edgeLoop)
+
+# displace the edgeloops
+for i, edgeLoop in enumerate(lerpedEdgeLoops):
+
+    # don't displace edges
+    if i > 0 and i < len(lerpedEdgeLoops)-1:
+        y = 1.0 * i / (len(lerpedEdgeLoops)-1) * IMAGE_MAP_H
+        i = int(y * IMAGE_MAP_W)
+        pixelRow = IMAGE_MAP[i:(i+IMAGE_MAP_W)]
+        edgeLoop = displaceEdgeLoop(edgeLoop, lerpedEdgeLoops[i-1], lerpedEdgeLoops[i+1], pixelRow, DISPLACEMENT_DEPTH)
     mesh.addEdgeLoop(edgeLoop)
 
 # move in and down to inner base
