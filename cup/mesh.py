@@ -36,11 +36,6 @@ NECK_HEIGHT = 0.85 * HEIGHT
 INNER_BASE_HEIGHT = BASE_HEIGHT + THICKNESS
 INNER_BODY_HEIGHT = BODY_HEIGHT
 
-# config image data
-CHARS_LINES = 4
-CHARS_PER_LINE = 7
-IMAGE_SCALE = 1.0
-
 print "Max height for text: %scm" % (NECK_HEIGHT - BASE_HEIGHT - THICKNESS)
 print "Max width for text: %scm" % (BODY_DIAMETER - THICKNESS * 2)
 
@@ -408,18 +403,6 @@ innerNeck = roundedSquare(EDGES_PER_SIDE, CENTER, NECK_DIAMETER-THICKNESS*2, NEC
 
 # move in and down to inner body
 innerBody = circle(VERTICES_PER_EDGE_LOOP, CENTER, BODY_INNER_DIAMETER * 0.5, INNER_BODY_HEIGHT)
-
-# retrieve image data
-imageData = []
-imgW = None
-imgH = None
-for i in range(CHARS_LINES):
-    for j in range(CHARS_PER_LINE):
-        filename = "chars/char_%s-%s.png" % (i+1, j+1)
-        im = Image.open(filename)
-        imageData.append(list(im.getdata()))
-        if imgW is None:
-            imgW, imgH = im.size
 
 # lerp from neck to body
 for i in range(EDGES_PER_SIDE):
