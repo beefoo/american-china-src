@@ -1,5 +1,8 @@
 # Creates a cup in Blender: blender --background --python blend.py
-# Or run this in Blender: exec(compile(open("/absolute/path/to/cup/blend.py").read(), "/absolute/path/to/cup/blend.py", 'exec'))
+# Or run this in Blender:
+    # import bpy
+    # filepath = bpy.path.abspath("//blend.py")
+    # exec(compile(open(filepath).read(), filepath, 'exec'))
 
 import bpy
 import json
