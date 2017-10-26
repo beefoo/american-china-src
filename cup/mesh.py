@@ -3,6 +3,7 @@
 import colorsys
 import json
 import math
+import numpy as np
 from PIL import Image, ImageDraw
 from pprint import pprint
 import sys
@@ -18,7 +19,7 @@ IMAGE_MAP_W, IMAGE_MAP_H = im.size
 IMAGE_MAP = list(im.getdata())
 
 # cup config in cm
-EDGES_PER_SIDE = 4 # 4, 128, 256, needs to be power of 2, needs to be high-res for letter displacement
+EDGES_PER_SIDE = 64 # 4, 128, 256, needs to be power of 2, needs to be high-res for letter displacement
 VERTICES_PER_EDGE_LOOP = EDGES_PER_SIDE * 4
 TOP_WIDTH = 8.2
 HEIGHT = 8.2
@@ -125,20 +126,49 @@ def circleMesh(vertices, center, radius, z, reverse=False):
 
     return edgeLoops
 
-def displaceEdgeLoop(loop, loopBefore, loopAfter, pixelRow, depth):
+def displaceEdgeLoop(loop, loopBefore, loopAfter, pixelRow, depth, direction="out"):
     displaced = []
 
-    for i, v in enumerate(loop):
+    for i, p in enumerate(loop):
         x = 1.0 * i / (len(loop)-1)
-        j = x * (len(pixelRow)-1)
-        rgb = pixelRow[j]
+        ii = int(round(x * (len(pixelRow)-1)))
+        rgb = pixelRow[ii]
         hls = colorsys.rgb_to_hls(rgb[0]/255.0, rgb[1]/255.0, rgb[2]/255.0)
         depth = depth * (1.0 - hls[1])
-        # TODO: get xy normal
-        # TODO: get xz normal
-        # TODO: get yz normal
-        # TODO: displace depth
-        displaced.append(v)
+
+        j = i + 1
+        h = i - 1
+        if j >= len(loop):
+            j = 0
+
+        # calculate normal of triangle made from points above, below, and adjacent
+        # https://stackoverflow.com/questions/19350792/calculate-normal-of-a-single-triangle-in-3d-space
+        p1 = np.array(loopBefore[h])
+        p2 = np.array(loopBefore[j])
+        p3 = np.array(loopAfter[i])
+
+        # if we want normals to go away from center
+        u = p3 - p1
+        v = p2 - p1
+
+        # if we want normals to go towards center
+        if direction == "in":
+            u = p2 - p1
+            v = p3 - p1
+
+        # cross product is the normal
+        n = np.cross(u, v)
+
+        # calculate distance bewteen point and normal
+        # https://math.stackexchange.com/questions/105400/linear-interpolation-in-3-dimensions
+        p0 = np.array(p)
+        p1 = n
+        dist = p1 - p0
+        ndist = np.linalg.norm(dist)
+        pd = p0 + (depth / ndist) * dist
+        pd = tuple(pd)
+
+        displaced.append(pd)
 
     return displaced
 
@@ -443,8 +473,8 @@ for i, edgeLoop in enumerate(lerpedEdgeLoops):
     # don't displace edges
     if i > 0 and i < len(lerpedEdgeLoops)-1:
         y = 1.0 * i / (len(lerpedEdgeLoops)-1) * IMAGE_MAP_H
-        i = int(y * IMAGE_MAP_W)
-        pixelRow = IMAGE_MAP[i:(i+IMAGE_MAP_W)]
+        offset = int(y * IMAGE_MAP_W)
+        pixelRow = IMAGE_MAP[offset:(offset+IMAGE_MAP_W)]
         edgeLoop = displaceEdgeLoop(edgeLoop, lerpedEdgeLoops[i-1], lerpedEdgeLoops[i+1], pixelRow, DISPLACEMENT_DEPTH)
     mesh.addEdgeLoop(edgeLoop)
 
