@@ -19,7 +19,7 @@ IMAGE_MAP_W, IMAGE_MAP_H = im.size
 IMAGE_MAP = list(im.getdata())
 
 # cup config in cm
-EDGES_PER_SIDE = 64 # 4, 128, 256, needs to be power of 2, needs to be high-res for letter displacement
+EDGES_PER_SIDE = 128 # 4, 128, 256, needs to be power of 2, needs to be high-res for letter displacement
 VERTICES_PER_EDGE_LOOP = EDGES_PER_SIDE * 4
 TOP_WIDTH = 8.2
 HEIGHT = 8.2
@@ -475,8 +475,11 @@ for i, edgeLoop in enumerate(lerpedEdgeLoops):
         y = 1.0 * i / (len(lerpedEdgeLoops)-1) * IMAGE_MAP_H
         offset = int(y * IMAGE_MAP_W)
         pixelRow = IMAGE_MAP[offset:(offset+IMAGE_MAP_W)]
-        edgeLoop = displaceEdgeLoop(edgeLoop, lerpedEdgeLoops[i-1], lerpedEdgeLoops[i+1], pixelRow, DISPLACEMENT_DEPTH)
-    mesh.addEdgeLoop(edgeLoop)
+        displacedLoop = displaceEdgeLoop(edgeLoop, lerpedEdgeLoops[i-1], lerpedEdgeLoops[i+1], pixelRow, DISPLACEMENT_DEPTH)
+        mesh.addEdgeLoop(displacedLoop)
+
+    else:
+        mesh.addEdgeLoop(edgeLoop)
 
 # move in and down to inner base
 innerBase = circleMesh(VERTICES_PER_EDGE_LOOP, CENTER, INNER_BASE_DIAMETER * 0.5, INNER_BASE_HEIGHT, True)
