@@ -15,6 +15,13 @@ def circle(vertices, center, radius, z):
         c.append((p[0], p[1], z))
     return c
 
+# north => -90 degrees or 270 degrees
+def translatePoint(p, degrees, distance):
+    radians = math.radians(degrees)
+    x2 = p[0] + distance * math.cos(radians)
+    y2 = p[1] + distance * math.sin(radians)
+    return (x2, y2)
+
 class Mesh:
 
     def __init__(self):
@@ -138,18 +145,6 @@ class Mesh:
         if len(self.edgeLoops[-1]) == 4:
             self.faces.append([(i+indexOffset) for i in range(4)])
 
-def vector(p1, p2):
-    x = p1[0] - p2[0]
-    y = p1[1] - p2[1]
-    z = p1[2] - p2[2]
-    return (x, y, z)
-
-def crossproduct(u, v):
-    x = u[1] * v[2] - u[2] * v[1]
-    y = u[2] * v[0] - u[0] * v[2]
-    z = u[0] * v[1] - u[1] * v[0]
-    return (x, y, z)
-
 loopAbove = circle(16, (0,0), 20, 20)
 loopCenter = circle(16, (0,0), 10, 10)
 loopBelow = circle(16, (0,0), 5, 5)
@@ -203,24 +198,24 @@ for i, p in enumerate(loopCenter):
         j = 0
 
     # https://stackoverflow.com/questions/19350792/calculate-normal-of-a-single-triangle-in-3d-space
-    p1 = loopAbove[h]
-    p2 = loopAbove[j]
-    p3 = loopBelow[i]
+    p1 = np.array(loopAbove[h])
+    p2 = np.array(loopAbove[j])
+    p3 = np.array(loopBelow[i])
 
     # if we want normals to go away from center
-    u = vector(p3, p1)
-    v = vector(p2, p1)
+    u = p3 - p1
+    v = p2 - p1
 
     # if we want normals to go towards center
-    # u = vector(p2, p1)
-    # v = vector(p3, p1)
+    # u = p2 - p1
+    # v = p3 - p1
 
-    n = crossproduct(u, v)
+    n = np.cross(u, v)
 
     # calculate distance bewteen point and normal
     # https://math.stackexchange.com/questions/105400/linear-interpolation-in-3-dimensions
     p0 = np.array(p)
-    p1 = np.array(n)
+    p1 = n
     dist = p1 - p0
     ndist = np.linalg.norm(dist)
     targetLen = 5.0
