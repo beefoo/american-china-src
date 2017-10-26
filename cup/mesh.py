@@ -165,7 +165,7 @@ def displaceEdgeLoop(loop, loopBefore, loopAfter, pixelRow, depth, direction="ou
         p1 = n
         dist = p1 - p0
         ndist = np.linalg.norm(dist)
-        pd = p0 + (displace / ndist) * dist
+        pd = p0 - (displace / ndist) * dist
         pd = tuple(pd)
 
         displaced.append(pd)
@@ -417,7 +417,7 @@ class Vector:
 
 # determine center
 halfWidth = TOP_WIDTH * 0.5
-CENTER = (halfWidth, halfWidth, 0)
+CENTER = (0, 0, 0)
 
 # init mesh
 mesh = Mesh()
@@ -498,7 +498,7 @@ data = [
         "verts": roundP(mesh.verts, PRECISION),
         "edges": [],
         "faces": mesh.faces,
-        "location": [-halfWidth, -halfWidth, 0],
+        "location": CENTER,
         "flipFaces": range(EDGES_PER_SIDE * EDGES_PER_SIDE)
     }
 ]
