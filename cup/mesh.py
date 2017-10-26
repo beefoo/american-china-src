@@ -141,11 +141,24 @@ def displaceEdgeLoop(loop, loopBefore, loopAfter, pixelRow, depth, direction="ou
         if j >= len(loop):
             j = 0
 
+        p0 = p
+        p1 = loopBefore[h]
+        p2 = loopBefore[j]
+        p3 = loopAfter[i]
+
+        # normalize Z
+        deltaZBefore = p1[2] - p0[2]
+        deltaZAfter = p3[2] - p0[2]
+        p0 = (p0[0], p0[1], 0)
+        p1 = (p1[0], p1[1], deltaZBefore)
+        p2 = (p2[0], p2[1], deltaZBefore)
+        p3 = (p3[0], p3[1], deltaZAfter)
+
         # calculate normal of triangle made from points above, below, and adjacent
         # https://stackoverflow.com/questions/19350792/calculate-normal-of-a-single-triangle-in-3d-space
-        p1 = np.array(loopBefore[h])
-        p2 = np.array(loopBefore[j])
-        p3 = np.array(loopAfter[i])
+        p1 = np.array(p1)
+        p2 = np.array(p1)
+        p3 = np.array(p1)
 
         # if we want normals to go away from center
         u = p3 - p1
@@ -161,12 +174,13 @@ def displaceEdgeLoop(loop, loopBefore, loopAfter, pixelRow, depth, direction="ou
 
         # calculate distance bewteen point and normal
         # https://math.stackexchange.com/questions/105400/linear-interpolation-in-3-dimensions
-        p0 = np.array(p)
+        p0 = np.array(p0)
         p1 = n
         dist = p1 - p0
         ndist = np.linalg.norm(dist)
         pd = p0 - (displace / ndist) * dist
         pd = tuple(pd)
+        pd = (pd[0], pd[1], pd[2] + p[2])
 
         displaced.append(pd)
 
