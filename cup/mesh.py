@@ -134,7 +134,7 @@ def displaceEdgeLoop(loop, loopBefore, loopAfter, pixelRow, depth, direction="ou
         ii = int(round(x * (len(pixelRow)-1)))
         rgb = pixelRow[ii]
         hls = colorsys.rgb_to_hls(rgb[0]/255.0, rgb[1]/255.0, rgb[2]/255.0)
-        depth = depth * (1.0 - hls[1])
+        displace = depth * (1.0 - hls[1])
 
         j = i + 1
         h = i - 1
@@ -165,7 +165,7 @@ def displaceEdgeLoop(loop, loopBefore, loopAfter, pixelRow, depth, direction="ou
         p1 = n
         dist = p1 - p0
         ndist = np.linalg.norm(dist)
-        pd = p0 + (depth / ndist) * dist
+        pd = p0 + (displace / ndist) * dist
         pd = tuple(pd)
 
         displaced.append(pd)
@@ -467,12 +467,15 @@ for i in range(EDGES_PER_SIDE):
     edgeLoop = lerpEdge(innerNeck, innerBody, amt)
     lerpedEdgeLoops.append(edgeLoop)
 
+print "Cup UV: %s x %s (%s:1)" % (VERTICES_PER_EDGE_LOOP, len(lerpedEdgeLoops), round(1.0 * VERTICES_PER_EDGE_LOOP / len(lerpedEdgeLoops), 2))
+print "Image: %s x %s (%s:1)" % (IMAGE_MAP_W, IMAGE_MAP_H, round(1.0 * IMAGE_MAP_W / IMAGE_MAP_H, 2))
+
 # displace the edgeloops
 for i, edgeLoop in enumerate(lerpedEdgeLoops):
 
     # don't displace edges
     if i > 0 and i < len(lerpedEdgeLoops)-1:
-        y = 1.0 * i / (len(lerpedEdgeLoops)-1) * IMAGE_MAP_H
+        y = int(1.0 * i / (len(lerpedEdgeLoops)-1) * IMAGE_MAP_H)
         offset = int(y * IMAGE_MAP_W)
         pixelRow = IMAGE_MAP[offset:(offset+IMAGE_MAP_W)]
         displacedLoop = displaceEdgeLoop(edgeLoop, lerpedEdgeLoops[i-1], lerpedEdgeLoops[i+1], pixelRow, DISPLACEMENT_DEPTH)
