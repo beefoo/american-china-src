@@ -5,22 +5,6 @@ import math
 import numpy as np
 import sys
 
-def angleBetweenPoints(p1, p2):
-    rad = radiansBetweenPoints(p1, p2)
-    return math.degrees(rad)
-
-def radiansBetweenPoints(p1, p2):
-    deltaX = p2[0] - p1[0]
-    deltaY = p2[1] - p1[1]
-    return math.atan2(deltaY, deltaX)
-
-# north => -90 degrees or 270 degrees
-def translatePoint(p, degrees, distance):
-    radians = math.radians(degrees)
-    x2 = p[0] + distance * math.cos(radians)
-    y2 = p[1] + distance * math.sin(radians)
-    return (x2, y2)
-
 def circle(vertices, center, radius, z):
     angleStart = -135
     angleStep = 360.0 / vertices
