@@ -21,8 +21,10 @@ IMAGE_MAP = list(im.getdata())
 
 # cup config in cm
 BASE_VERTICES = 16 # don't change this as it will break rounded rectangles
-SUBDIVIDE = 1 # will subdivide base vertices B * 2^x
-VERTICES_PER_EDGE_LOOP = BASE_VERTICES * 2**SUBDIVIDE
+SUBDIVIDE_Y = 6 # will subdivide base vertices B * 2^x
+SUBDIVIDE_X = 5
+VERTICES_PER_EDGE_LOOP = BASE_VERTICES * 2**SUBDIVIDE_X
+print "%s vertices per edge loop" % VERTICES_PER_EDGE_LOOP
 
 TOP_WIDTH = 8.2
 HEIGHT = 8.2
@@ -34,10 +36,10 @@ DISPLACEMENT_DEPTH = 0.25
 # relative widths
 BASE_OUTER_DIAMETER = 0.5 * TOP_WIDTH
 BASE_INNER_DIAMETER = 0.667 * BASE_OUTER_DIAMETER
-BASE_INSET_DIAMETER = 0.8 * BASE_INNER_DIAMETER
+BASE_INSET_DIAMETER = 0.5 * BASE_INNER_DIAMETER
 BODY_DIAMETER = 1.0 * TOP_WIDTH
 NECK_DIAMETER = 0.9 * TOP_WIDTH
-BODY_INNER_DIAMETER = NECK_DIAMETER - THICKNESS * 2
+BODY_INNER_DIAMETER = BODY_DIAMETER * 0.92 - THICKNESS * 2
 INNER_BASE_DIAMETER = BODY_INNER_DIAMETER * 0.5
 
 # relative heights
@@ -46,7 +48,7 @@ BASE_HEIGHT = 0.1 * HEIGHT
 BODY_HEIGHT = 0.167 * HEIGHT
 NECK_HEIGHT = 0.85 * HEIGHT
 INNER_BASE_HEIGHT = BASE_HEIGHT + THICKNESS
-INNER_BODY_HEIGHT = BODY_HEIGHT
+INNER_BODY_HEIGHT = BODY_HEIGHT * 1.3
 
 print "Max height for text: %scm" % (NECK_HEIGHT - BASE_HEIGHT - THICKNESS)
 print "Max width for text: %scm" % (BODY_DIAMETER - THICKNESS * 2)
@@ -88,6 +90,16 @@ def bspline(cv, n=100, degree=3, periodic=True):
 
     # Calculate result
     return np.array(interpolate.splev(u, (kv,cv.T,degree))).T.tolist()
+
+def bsplineEdgeLoops(loops, targetLength):
+    splinedLoops = [[] for l in range(targetLength)]
+    vertices = len(loops[0])
+    for i in range(vertices):
+        cv = [loop[i] for loop in loops]
+        splined = bspline(cv, n=targetLength, periodic=False)
+        for j, v in enumerate(splined):
+            splinedLoops[j].append(v)
+    return splinedLoops
 
 def circle(vertices, center, radius, z):
     angleStart = -135
@@ -260,6 +272,9 @@ def lerpEdge(r1, r2, amt):
         lerpedEdge.append(tuple(p))
     return lerpedEdge
 
+def norm(value, a, b):
+    return 1.0 * (value - a) / (b - a)
+
 def roundedSquare(vertices, c, w, z, r):
     square = []
     hw = w * 0.5
@@ -353,6 +368,7 @@ class Mesh:
         d = distance(prevLoop[0], nextLoop[0])
         lerpAmount = amount / d
         if lerpAmount >= 0.5:
+            print "Edge loop %s helper too close to neighbor loop" % len(self.edgeLoops)
             return False
         if not after:
             lerpAmount = 1.0 - lerpAmount
@@ -443,6 +459,14 @@ class Mesh:
         if len(self.edgeLoops[-1]) == 4:
             self.faces.append([(i+indexOffset) for i in range(4)])
 
+    def updateEdgeLoops(self, loops, offset0=None, offset1=None):
+        if offset0 is None and offset1 is None:
+            self.edgeLoops = loops[:]
+        else:
+            before = self.edgeLoops[:offset0]
+            after = self.edgeLoops[offset1:]
+            self.edgeLoops = before + loops + after
+
 # determine center
 halfWidth = TOP_WIDTH * 0.5
 CENTER = (0, 0, 0)
@@ -453,6 +477,7 @@ mesh = Mesh()
 # create base inset as a circle which will be the first face
 baseInset = circleMesh(VERTICES_PER_EDGE_LOOP, CENTER, BASE_INSET_DIAMETER * 0.5, BASE_INSET_HEIGHT)
 mesh.addEdgeLoops(baseInset)
+subdivideStart = len(mesh.edgeLoops)
 
 # move down and out to base inner
 baseInner = circle(VERTICES_PER_EDGE_LOOP, CENTER, BASE_INNER_DIAMETER * 0.5, 0)
@@ -483,42 +508,54 @@ innerTop = roundedSquare(VERTICES_PER_EDGE_LOOP, CENTER, TOP_WIDTH-THICKNESS*2, 
 mesh.addEdgeLoop(innerTop, False, EDGE_RADIUS)
 
 # move in and down to inner neck
+displaceStart = len(mesh.edgeLoops)
 innerNeck = roundedSquare(VERTICES_PER_EDGE_LOOP, CENTER, NECK_DIAMETER-THICKNESS*2, NECK_HEIGHT, TOP_CORNER_RADIUS)
+mesh.addEdgeLoop(innerNeck)
 
 # move in and down to inner body
 innerBody = circle(VERTICES_PER_EDGE_LOOP, CENTER, BODY_INNER_DIAMETER * 0.5, INNER_BODY_HEIGHT)
-
-# # lerp from neck to body
-# lerpedEdgeLoops = []
-# for i in range(EDGES_PER_SIDE):
-#     amt = 1.0 * i / (EDGES_PER_SIDE-1)
-#     edgeLoop = lerpEdge(innerNeck, innerBody, amt)
-#     lerpedEdgeLoops.append(edgeLoop)
-#
-# print "Cup UV: %s x %s (%s:1)" % (VERTICES_PER_EDGE_LOOP, len(lerpedEdgeLoops), round(1.0 * VERTICES_PER_EDGE_LOOP / len(lerpedEdgeLoops), 2))
-# print "Image: %s x %s (%s:1)" % (IMAGE_MAP_W, IMAGE_MAP_H, round(1.0 * IMAGE_MAP_W / IMAGE_MAP_H, 2))
-#
-# # displace the edgeloops
-# for i, edgeLoop in enumerate(lerpedEdgeLoops):
-#
-#     # don't displace edges
-#     if i > 0 and i < len(lerpedEdgeLoops)-1:
-#         y = int(1.0 * i / (len(lerpedEdgeLoops)-1) * IMAGE_MAP_H)
-#         offset = int(y * IMAGE_MAP_W)
-#         pixelRow = IMAGE_MAP[offset:(offset+IMAGE_MAP_W)]
-#         displacedLoop = displaceEdgeLoop(edgeLoop, lerpedEdgeLoops[i-1], lerpedEdgeLoops[i+1], pixelRow, DISPLACEMENT_DEPTH)
-#         mesh.addEdgeLoop(displacedLoop)
-#
-#     else:
-#         mesh.addEdgeLoop(edgeLoop)
-
-mesh.addEdgeLoop(innerNeck)
 mesh.addEdgeLoop(innerBody)
+displaceEnd = len(mesh.edgeLoops)
+subdivideEnd = len(mesh.edgeLoops)
 
 # move in and down to inner base
 innerBase = circleMesh(VERTICES_PER_EDGE_LOOP, CENTER, INNER_BASE_DIAMETER * 0.5, INNER_BASE_HEIGHT, True)
 mesh.addEdgeLoops(innerBase)
 
+# subdivide edge loops
+anchorEdgeLoops = mesh.edgeLoops[subdivideStart:subdivideEnd]
+targetLength = (len(anchorEdgeLoops) - 1) * 2**SUBDIVIDE_Y + 1
+splinedEdgeLoops = bsplineEdgeLoops(anchorEdgeLoops, targetLength)
+mesh.updateEdgeLoops(splinedEdgeLoops)
+
+# displace edge loops
+offsetBefore = 0.2
+offsetAfter = -0.225
+delta = (displaceEnd-displaceStart-1) * 2**SUBDIVIDE_Y
+displaceStart = subdivideStart + (displaceStart-subdivideStart) * 2**SUBDIVIDE_Y + int(offsetBefore * delta)
+displaceEnd = displaceStart + delta + int(offsetAfter * delta)
+originalEdgeLoops = mesh.edgeLoops[displaceStart:displaceEnd]
+displacedEdgeLoops = []
+
+# displace the edgeloops
+print "Displacing %s edge loops" % len(originalEdgeLoops)
+z0 = originalEdgeLoops[0][0][2]
+z1 = originalEdgeLoops[-1][0][2]
+for i, edgeLoop in enumerate(originalEdgeLoops):
+    # don't displace edges
+    if i > 0 and i < len(originalEdgeLoops)-1:
+        py = norm(edgeLoop[0][2], z0, z1)
+        y = int(py * IMAGE_MAP_H)
+        offset = int(y * IMAGE_MAP_W)
+        pixelRow = IMAGE_MAP[offset:(offset+IMAGE_MAP_W)]
+        displacedLoop = displaceEdgeLoop(edgeLoop, originalEdgeLoops[i-1], originalEdgeLoops[i+1], pixelRow, DISPLACEMENT_DEPTH)
+        displacedEdgeLoops.append(displacedLoop)
+
+    else:
+        displacedEdgeLoops.append(edgeLoop)
+mesh.updateEdgeLoops(displacedEdgeLoops, displaceStart, displaceEnd)
+
+print "Calculating faces..."
 # create faces from edges
 mesh.processEdgeloops()
 
@@ -534,6 +571,7 @@ data = [
     }
 ]
 
+print "Writing to file..."
 with open(OUTPUT_FILE, 'w') as f:
     json.dump(data, f)
     print "Wrote to file %s" % OUTPUT_FILE
