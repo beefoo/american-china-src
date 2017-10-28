@@ -6,6 +6,7 @@ import math
 import numpy as np
 from PIL import Image, ImageDraw
 from pprint import pprint
+from scipy import interpolate
 import sys
 
 # data config
@@ -19,8 +20,10 @@ IMAGE_MAP_W, IMAGE_MAP_H = im.size
 IMAGE_MAP = list(im.getdata())
 
 # cup config in cm
-EDGES_PER_SIDE = 128 # 4, 128, 256, needs to be power of 2, needs to be high-res for letter displacement
-VERTICES_PER_EDGE_LOOP = EDGES_PER_SIDE * 4
+BASE_VERTICES = 16 # don't change this as it will break rounded rectangles
+SUBDIVIDE = 1 # will subdivide base vertices B * 2^x
+VERTICES_PER_EDGE_LOOP = BASE_VERTICES * 2**SUBDIVIDE
+
 TOP_WIDTH = 8.2
 HEIGHT = 8.2
 EDGE_RADIUS = 0.25
@@ -47,6 +50,44 @@ INNER_BODY_HEIGHT = BODY_HEIGHT
 
 print "Max height for text: %scm" % (NECK_HEIGHT - BASE_HEIGHT - THICKNESS)
 print "Max width for text: %scm" % (BODY_DIAMETER - THICKNESS * 2)
+
+def bspline(cv, n=100, degree=3, periodic=True):
+    """ Calculate n samples on a bspline
+
+        cv :      Array ov control vertices
+        n  :      Number of samples to return
+        degree:   Curve degree
+        periodic: True - Curve is closed
+                  False - Curve is open
+    """
+
+    # If periodic, extend the point array by count+degree+1
+    cv = np.asarray(cv)
+    count = len(cv)
+
+    if periodic:
+        factor, fraction = divmod(count+degree+1, count)
+        cv = np.concatenate((cv,) * factor + (cv[:fraction],))
+        count = len(cv)
+        degree = np.clip(degree,1,degree)
+
+    # If opened, prevent degree from exceeding count-1
+    else:
+        degree = np.clip(degree,1,count-1)
+
+
+    # Calculate knot vector
+    kv = None
+    if periodic:
+        kv = np.arange(0-degree,count+degree+degree-1)
+    else:
+        kv = np.clip(np.arange(count+degree+1)-degree,0,count-degree)
+
+    # Calculate query range
+    u = np.linspace(periodic,(count-degree),n)
+
+    # Calculate result
+    return np.array(interpolate.splev(u, (kv,cv.T,degree))).T.tolist()
 
 def circle(vertices, center, radius, z):
     angleStart = -135
@@ -219,57 +260,38 @@ def lerpEdge(r1, r2, amt):
         lerpedEdge.append(tuple(p))
     return lerpedEdge
 
-def roundedSquare(edgesPerSide, c, w, z, r):
+def roundedSquare(vertices, c, w, z, r):
     square = []
-
     hw = w * 0.5
-    verticesAdd = edgesPerSide - 3
 
-    # top side
+    # top left -> top right
     y = c[1] - hw
-    x0 = c[0] - hw
-    x0c = x0 + r
-    x1c = c[0] + hw - r
-    square += [(x0, y, z), (x0c, y, z)]
-    for i in range(verticesAdd):
-        x = lerp(x0c, x1c, 1.0*(i+1)/(verticesAdd+1))
-        square.append((x, y, z))
-    square.append((x1c, y, z))
-
-    # right side
-    x = c[0] + hw
-    y0 = c[1] - hw
-    y0c = y0 + r
-    y1c = c[1] + hw - r
-    square += [(x, y0, z), (x, y0c, z)]
-    for i in range(verticesAdd):
-        y = lerp(y0c, y1c, 1.0*(i+1)/(verticesAdd+1))
-        square.append((x, y, z))
-    square.append((x, y1c, z))
-
-    # bottom side
-    y = c[1] + hw
-    x0 = c[0] + hw
-    x0c = x0 - r
-    x1c = c[0] - hw + r
-    square += [(x0, y, z), (x0c, y, z)]
-    for i in range(verticesAdd):
-        x = lerp(x0c, x1c, 1.0*(i+1)/(verticesAdd+1))
-        square.append((x, y, z))
-    square.append((x1c, y, z))
-
-    # left side
     x = c[0] - hw
-    y0 = c[1]+ hw
-    y0c = y0 - r
-    y1c = c[1] - hw + r
-    square += [(x, y0, z), (x, y0c, z)]
-    for i in range(verticesAdd):
-        y = lerp(y0c, y1c, 1.0*(i+1)/(verticesAdd+1))
-        square.append((x, y, z))
-    square.append((x, y1c, z))
+    square += [(x, y), (x + r, y), (c[0], y), (x + w - r, y)]
+    # top right to bottom right
+    x = c[0] + hw
+    y = c[1] - hw
+    square += [(x, y), (x, y+r), (x, c[1]), (x, y + w - r)]
+    # bottom right to bottom left
+    y = c[1] + hw
+    x = c[0] + hw
+    square += [(x, y), (x - r, y), (c[0], y), (x - w + r, y)]
+    # bottom left to top left
+    x = c[0] - hw
+    y = c[1] + hw
+    square += [(x, y), (x, y - r), (x, c[1]), (x, y - w + r)]
 
-    return square
+    # use b-spline for rounding
+    rounded = bspline(square, vertices+1)
+    # offset
+    rounded = rounded[:-1]
+    offset = vertices / 8
+    a = rounded[(vertices-offset):]
+    b = rounded[:(vertices-offset)]
+    rounded = a + b
+    # add z
+    rounded = [(r[0], r[1], z) for r in rounded]
+    return rounded
 
 def roundP(vList, precision):
     rounded = []
@@ -421,14 +443,6 @@ class Mesh:
         if len(self.edgeLoops[-1]) == 4:
             self.faces.append([(i+indexOffset) for i in range(4)])
 
-class Vector:
-
-    def __init__(self, t):
-        self.t = t
-
-    def add(self, t2):
-        return (self.t[0]+t2[0], self.t[1]+t2[1], self.t[2]+t2[2])
-
 # determine center
 halfWidth = TOP_WIDTH * 0.5
 CENTER = (0, 0, 0)
@@ -457,46 +471,49 @@ body = circle(VERTICES_PER_EDGE_LOOP, CENTER, BODY_DIAMETER * 0.5, BODY_HEIGHT)
 mesh.addEdgeLoop(body)
 
 # move up and out (lerp) to neck
-neck = roundedSquare(EDGES_PER_SIDE, CENTER, NECK_DIAMETER, NECK_HEIGHT, TOP_CORNER_RADIUS)
+neck = roundedSquare(VERTICES_PER_EDGE_LOOP, CENTER, NECK_DIAMETER, NECK_HEIGHT, TOP_CORNER_RADIUS)
 mesh.addEdgeLoop(neck)
 
 # move up and out (lerp) to top
-top = roundedSquare(EDGES_PER_SIDE, CENTER, TOP_WIDTH, HEIGHT, TOP_CORNER_RADIUS)
+top = roundedSquare(VERTICES_PER_EDGE_LOOP, CENTER, TOP_WIDTH, HEIGHT, TOP_CORNER_RADIUS)
 mesh.addEdgeLoop(top, EDGE_RADIUS)
 
 # move in to inner top
-innerTop = roundedSquare(EDGES_PER_SIDE, CENTER, TOP_WIDTH-THICKNESS*2, HEIGHT, TOP_CORNER_RADIUS)
+innerTop = roundedSquare(VERTICES_PER_EDGE_LOOP, CENTER, TOP_WIDTH-THICKNESS*2, HEIGHT, TOP_CORNER_RADIUS)
 mesh.addEdgeLoop(innerTop, False, EDGE_RADIUS)
 
 # move in and down to inner neck
-innerNeck = roundedSquare(EDGES_PER_SIDE, CENTER, NECK_DIAMETER-THICKNESS*2, NECK_HEIGHT, TOP_CORNER_RADIUS)
+innerNeck = roundedSquare(VERTICES_PER_EDGE_LOOP, CENTER, NECK_DIAMETER-THICKNESS*2, NECK_HEIGHT, TOP_CORNER_RADIUS)
 
 # move in and down to inner body
 innerBody = circle(VERTICES_PER_EDGE_LOOP, CENTER, BODY_INNER_DIAMETER * 0.5, INNER_BODY_HEIGHT)
 
-# lerp from neck to body
-lerpedEdgeLoops = []
-for i in range(EDGES_PER_SIDE):
-    amt = 1.0 * i / (EDGES_PER_SIDE-1)
-    edgeLoop = lerpEdge(innerNeck, innerBody, amt)
-    lerpedEdgeLoops.append(edgeLoop)
+# # lerp from neck to body
+# lerpedEdgeLoops = []
+# for i in range(EDGES_PER_SIDE):
+#     amt = 1.0 * i / (EDGES_PER_SIDE-1)
+#     edgeLoop = lerpEdge(innerNeck, innerBody, amt)
+#     lerpedEdgeLoops.append(edgeLoop)
+#
+# print "Cup UV: %s x %s (%s:1)" % (VERTICES_PER_EDGE_LOOP, len(lerpedEdgeLoops), round(1.0 * VERTICES_PER_EDGE_LOOP / len(lerpedEdgeLoops), 2))
+# print "Image: %s x %s (%s:1)" % (IMAGE_MAP_W, IMAGE_MAP_H, round(1.0 * IMAGE_MAP_W / IMAGE_MAP_H, 2))
+#
+# # displace the edgeloops
+# for i, edgeLoop in enumerate(lerpedEdgeLoops):
+#
+#     # don't displace edges
+#     if i > 0 and i < len(lerpedEdgeLoops)-1:
+#         y = int(1.0 * i / (len(lerpedEdgeLoops)-1) * IMAGE_MAP_H)
+#         offset = int(y * IMAGE_MAP_W)
+#         pixelRow = IMAGE_MAP[offset:(offset+IMAGE_MAP_W)]
+#         displacedLoop = displaceEdgeLoop(edgeLoop, lerpedEdgeLoops[i-1], lerpedEdgeLoops[i+1], pixelRow, DISPLACEMENT_DEPTH)
+#         mesh.addEdgeLoop(displacedLoop)
+#
+#     else:
+#         mesh.addEdgeLoop(edgeLoop)
 
-print "Cup UV: %s x %s (%s:1)" % (VERTICES_PER_EDGE_LOOP, len(lerpedEdgeLoops), round(1.0 * VERTICES_PER_EDGE_LOOP / len(lerpedEdgeLoops), 2))
-print "Image: %s x %s (%s:1)" % (IMAGE_MAP_W, IMAGE_MAP_H, round(1.0 * IMAGE_MAP_W / IMAGE_MAP_H, 2))
-
-# displace the edgeloops
-for i, edgeLoop in enumerate(lerpedEdgeLoops):
-
-    # don't displace edges
-    if i > 0 and i < len(lerpedEdgeLoops)-1:
-        y = int(1.0 * i / (len(lerpedEdgeLoops)-1) * IMAGE_MAP_H)
-        offset = int(y * IMAGE_MAP_W)
-        pixelRow = IMAGE_MAP[offset:(offset+IMAGE_MAP_W)]
-        displacedLoop = displaceEdgeLoop(edgeLoop, lerpedEdgeLoops[i-1], lerpedEdgeLoops[i+1], pixelRow, DISPLACEMENT_DEPTH)
-        mesh.addEdgeLoop(displacedLoop)
-
-    else:
-        mesh.addEdgeLoop(edgeLoop)
+mesh.addEdgeLoop(innerNeck)
+mesh.addEdgeLoop(innerBody)
 
 # move in and down to inner base
 innerBase = circleMesh(VERTICES_PER_EDGE_LOOP, CENTER, INNER_BASE_DIAMETER * 0.5, INNER_BASE_HEIGHT, True)
@@ -513,7 +530,7 @@ data = [
         "edges": [],
         "faces": mesh.faces,
         "location": CENTER,
-        "flipFaces": range(EDGES_PER_SIDE * EDGES_PER_SIDE)
+        "flipFaces": range((VERTICES_PER_EDGE_LOOP/4)**2)
     }
 ]
 
