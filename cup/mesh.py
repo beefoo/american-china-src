@@ -26,21 +26,21 @@ SUBDIVIDE_X = 5
 VERTICES_PER_EDGE_LOOP = BASE_VERTICES * 2**SUBDIVIDE_X
 print "%s vertices per edge loop" % VERTICES_PER_EDGE_LOOP
 
-TOP_WIDTH = 8.2
+TOP_WIDTH = 8.4
 HEIGHT = 8.2
-EDGE_RADIUS = 0.25
-TOP_CORNER_RADIUS = 1.2
+EDGE_RADIUS = 0.33
+TOP_CORNER_RADIUS = 2.0
 THICKNESS = 0.6
 DISPLACEMENT_DEPTH = 0.25
 
 # relative widths
 BASE_OUTER_DIAMETER = 0.5 * TOP_WIDTH
 BASE_INNER_DIAMETER = 0.667 * BASE_OUTER_DIAMETER
-BASE_INSET_DIAMETER = 0.5 * BASE_INNER_DIAMETER
+BASE_INSET_DIAMETER = 0.2 * BASE_INNER_DIAMETER
 BODY_DIAMETER = 1.0 * TOP_WIDTH
-NECK_DIAMETER = 0.9 * TOP_WIDTH
+NECK_DIAMETER = 0.85 * TOP_WIDTH
 BODY_INNER_DIAMETER = BODY_DIAMETER * 0.92 - THICKNESS * 2
-INNER_BASE_DIAMETER = BODY_INNER_DIAMETER * 0.5
+INNER_BASE_DIAMETER = BODY_INNER_DIAMETER * 0.2
 
 # relative heights
 BASE_INSET_HEIGHT = 0.25
@@ -183,7 +183,7 @@ def displaceEdgeLoop(loop, loopBefore, loopAfter, pixelRow, depth, direction="ou
     displaced = []
 
     for i, p in enumerate(loop):
-        x = 1.0 * i / (len(loop)-1)
+        x = 1.0 - 1.0 * i / (len(loop)-1)
         ii = int(round(x * (len(pixelRow)-1)))
         rgb = pixelRow[ii]
         hls = colorsys.rgb_to_hls(rgb[0]/255.0, rgb[1]/255.0, rgb[2]/255.0)
@@ -420,8 +420,6 @@ class Mesh:
                 elif i==(bigger-5):
                     v3 = smallerOffset
 
-
-
                 faces.append((v1, v2, v3, v4))
 
         # equal number of vertices
@@ -479,6 +477,12 @@ baseInset = circleMesh(VERTICES_PER_EDGE_LOOP, CENTER, BASE_INSET_DIAMETER * 0.5
 mesh.addEdgeLoops(baseInset)
 subdivideStart = len(mesh.edgeLoops)
 
+# move out to base inset helper
+baseInsetHelper = circle(VERTICES_PER_EDGE_LOOP, CENTER, BASE_INSET_DIAMETER * 0.51, BASE_INSET_HEIGHT)
+mesh.addEdgeLoop(baseInsetHelper)
+baseInsetHelper = circle(VERTICES_PER_EDGE_LOOP, CENTER, (BASE_INSET_DIAMETER + BASE_INNER_DIAMETER) * 0.5 * 0.5, BASE_INSET_HEIGHT)
+mesh.addEdgeLoop(baseInsetHelper)
+
 # move down and out to base inner
 baseInner = circle(VERTICES_PER_EDGE_LOOP, CENTER, BASE_INNER_DIAMETER * 0.5, 0)
 mesh.addEdgeLoop(baseInner, False, EDGE_RADIUS)
@@ -516,9 +520,15 @@ mesh.addEdgeLoop(innerNeck)
 innerBody = circle(VERTICES_PER_EDGE_LOOP, CENTER, BODY_INNER_DIAMETER * 0.5, INNER_BODY_HEIGHT)
 mesh.addEdgeLoop(innerBody)
 displaceEnd = len(mesh.edgeLoops)
+
+# move in and down to inner base helper
+innerBaseHelper = circle(VERTICES_PER_EDGE_LOOP, CENTER, (INNER_BASE_DIAMETER + BODY_INNER_DIAMETER) * 0.5 * 0.5, INNER_BASE_HEIGHT)
+mesh.addEdgeLoop(innerBaseHelper)
+innerBaseHelper = circle(VERTICES_PER_EDGE_LOOP, CENTER, INNER_BASE_DIAMETER * 0.51, INNER_BASE_HEIGHT)
+mesh.addEdgeLoop(innerBaseHelper)
 subdivideEnd = len(mesh.edgeLoops)
 
-# move in and down to inner base
+# move in to inner base
 innerBase = circleMesh(VERTICES_PER_EDGE_LOOP, CENTER, INNER_BASE_DIAMETER * 0.5, INNER_BASE_HEIGHT, True)
 mesh.addEdgeLoops(innerBase)
 
@@ -526,11 +536,11 @@ mesh.addEdgeLoops(innerBase)
 anchorEdgeLoops = mesh.edgeLoops[subdivideStart:subdivideEnd]
 targetLength = (len(anchorEdgeLoops) - 1) * 2**SUBDIVIDE_Y + 1
 splinedEdgeLoops = bsplineEdgeLoops(anchorEdgeLoops, targetLength)
-mesh.updateEdgeLoops(splinedEdgeLoops)
+mesh.updateEdgeLoops(splinedEdgeLoops, subdivideStart, subdivideEnd)
 
 # displace edge loops
-offsetBefore = 0.2
-offsetAfter = -0.225
+offsetBefore = 0.25
+offsetAfter = 0.25
 delta = (displaceEnd-displaceStart-1) * 2**SUBDIVIDE_Y
 displaceStart = subdivideStart + (displaceStart-subdivideStart) * 2**SUBDIVIDE_Y + int(offsetBefore * delta)
 displaceEnd = displaceStart + delta + int(offsetAfter * delta)
