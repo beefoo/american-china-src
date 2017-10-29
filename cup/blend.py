@@ -67,7 +67,7 @@ for d in data:
 
     # Add decimate modifier to reduce polys to under 1 million
     obj.modifiers.new("dec", type='DECIMATE')
-    obj.modifiers["dec"].ratio = 0.2
+    obj.modifiers["dec"].ratio = 0.24
 
     # Apply modifiers
     # obj.modifier_apply(apply_as='DATA', modifier="subd")
