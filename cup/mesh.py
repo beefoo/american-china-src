@@ -11,7 +11,7 @@ import sys
 
 # data config
 OUTPUT_FILE = "mesh.json"
-PRECISION = 5
+PRECISION = 8
 IMAGE_MAP_FILE = "imgMap.png"
 
 # retrieve image map data
@@ -26,12 +26,12 @@ SUBDIVIDE_X = 5
 VERTICES_PER_EDGE_LOOP = BASE_VERTICES * 2**SUBDIVIDE_X
 print "%s vertices per edge loop" % VERTICES_PER_EDGE_LOOP
 
-TOP_WIDTH = 8.4
-HEIGHT = 8.2
-EDGE_RADIUS = 0.33
-TOP_CORNER_RADIUS = 2.0
-THICKNESS = 0.6
-DISPLACEMENT_DEPTH = 0.25
+TOP_WIDTH = 84.0
+HEIGHT = 82.0
+EDGE_RADIUS = 3.3
+TOP_CORNER_RADIUS = 20
+THICKNESS = 6.0
+DISPLACEMENT_DEPTH = 2.5
 
 # relative widths
 BASE_OUTER_DIAMETER = 0.5 * TOP_WIDTH
@@ -43,15 +43,15 @@ BODY_INNER_DIAMETER = BODY_DIAMETER * 0.92 - THICKNESS * 2
 INNER_BASE_DIAMETER = BODY_INNER_DIAMETER * 0.2
 
 # relative heights
-BASE_INSET_HEIGHT = 0.25
+BASE_INSET_HEIGHT = 2.5
 BASE_HEIGHT = 0.1 * HEIGHT
 BODY_HEIGHT = 0.167 * HEIGHT
 NECK_HEIGHT = 0.85 * HEIGHT
 INNER_BASE_HEIGHT = BASE_HEIGHT + THICKNESS
 INNER_BODY_HEIGHT = BODY_HEIGHT * 1.3
 
-print "Max height for text: %scm" % (NECK_HEIGHT - BASE_HEIGHT - THICKNESS)
-print "Max width for text: %scm" % (BODY_DIAMETER - THICKNESS * 2)
+print "Max height for text: %smm" % (NECK_HEIGHT - BASE_HEIGHT - THICKNESS)
+print "Max width for text: %smm" % (BODY_DIAMETER - THICKNESS * 2)
 
 def bspline(cv, n=100, degree=3, periodic=True):
     """ Calculate n samples on a bspline

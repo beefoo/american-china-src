@@ -8,7 +8,7 @@ import bpy
 import json
 import os
 
-bpy.app.debug_wm = True
+# bpy.app.debug_wm = True
 
 data = []
 with open(bpy.path.abspath("//mesh.json")) as f:
@@ -17,9 +17,9 @@ with open(bpy.path.abspath("//mesh.json")) as f:
 # blend starts here
 scene = bpy.context.scene
 
-# convert scene to metric, centimeters
+# convert scene to metric, millimeters
 scene.unit_settings.system = 'METRIC'
-scene.unit_settings.scale_length = 0.01
+scene.unit_settings.scale_length = 0.001
 
 # deselect all
 bpy.ops.object.select_all(action='DESELECT')
@@ -63,3 +63,12 @@ for d in data:
     # Add subsurf modifier
     obj.modifiers.new("subd", type='SUBSURF')
     obj.modifiers['subd'].levels = 1
+    obj.modifiers["subd"].render_levels = 1
+
+    # Add decimate modifier to reduce polys to under 1 million
+    obj.modifiers.new("dec", type='DECIMATE')
+    obj.modifiers["dec"].ratio = 0.2
+
+    # Apply modifiers
+    # obj.modifier_apply(apply_as='DATA', modifier="subd")
+    # obj.modifier_apply(apply_as='DATA', modifier="dec")
