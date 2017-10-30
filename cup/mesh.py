@@ -19,7 +19,7 @@ im = Image.open(IMAGE_MAP_FILE)
 IMAGE_MAP_W, IMAGE_MAP_H = im.size
 IMAGE_MAP = list(im.getdata())
 
-# cup config in cm
+# cup config in mm
 BASE_VERTICES = 16 # don't change this as it will break rounded rectangles
 SUBDIVIDE_Y = 6 # will subdivide base vertices B * 2^x
 SUBDIVIDE_X = 5
