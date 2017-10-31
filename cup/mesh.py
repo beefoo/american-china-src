@@ -26,20 +26,22 @@ SUBDIVIDE_X = 5
 VERTICES_PER_EDGE_LOOP = BASE_VERTICES * 2**SUBDIVIDE_X
 print "%s vertices per edge loop" % VERTICES_PER_EDGE_LOOP
 
-TOP_WIDTH = 84.0
+TOP_WIDTH = 92.0
 HEIGHT = 72.0
+TOP_LIP = 2.0
 EDGE_RADIUS = 4.0
 TOP_CORNER_RADIUS = 24.0
-THICKNESS = 5.0
-DISPLACEMENT_DEPTH = 2.5
+THICKNESS = 6.5
+DISPLACEMENT_DEPTH = 3.5
 
 # relative widths
 BASE_OUTER_DIAMETER = 0.5 * TOP_WIDTH
 BASE_INNER_DIAMETER = 0.667 * BASE_OUTER_DIAMETER
 BASE_INSET_DIAMETER = 0.2 * BASE_INNER_DIAMETER
 BODY_DIAMETER = 1.0 * TOP_WIDTH
-NECK_DIAMETER = 0.85 * TOP_WIDTH
-BODY_INNER_DIAMETER = BODY_DIAMETER * 0.92 - THICKNESS * 2
+NECK_DIAMETER = 0.875 * TOP_WIDTH
+NECK_INNER_DIAMETER = NECK_DIAMETER * 0.94 - THICKNESS * 2
+BODY_INNER_DIAMETER = BODY_DIAMETER * 0.86 - THICKNESS * 2
 INNER_BASE_DIAMETER = BODY_INNER_DIAMETER * 0.2
 
 # relative heights
@@ -504,16 +506,20 @@ neck = roundedSquare(VERTICES_PER_EDGE_LOOP, CENTER, NECK_DIAMETER, NECK_HEIGHT,
 mesh.addEdgeLoop(neck)
 
 # move up and out (lerp) to top
-top = roundedSquare(VERTICES_PER_EDGE_LOOP, CENTER, TOP_WIDTH, HEIGHT, TOP_CORNER_RADIUS)
-mesh.addEdgeLoop(top, EDGE_RADIUS)
+outerTop = roundedSquare(VERTICES_PER_EDGE_LOOP, CENTER, TOP_WIDTH, HEIGHT-TOP_LIP, TOP_CORNER_RADIUS)
+mesh.addEdgeLoop(outerTop)
+
+# move up and in to top
+top = roundedSquare(VERTICES_PER_EDGE_LOOP, CENTER, TOP_WIDTH-THICKNESS, HEIGHT, TOP_CORNER_RADIUS)
+mesh.addEdgeLoop(top)
 
 # move in to inner top
-innerTop = roundedSquare(VERTICES_PER_EDGE_LOOP, CENTER, TOP_WIDTH-THICKNESS*2, HEIGHT, TOP_CORNER_RADIUS)
-mesh.addEdgeLoop(innerTop, False, EDGE_RADIUS)
+innerTop = roundedSquare(VERTICES_PER_EDGE_LOOP, CENTER, TOP_WIDTH-THICKNESS*2, HEIGHT-TOP_LIP, TOP_CORNER_RADIUS)
+mesh.addEdgeLoop(innerTop)
 
 # move in and down to inner neck
 displaceStart = len(mesh.edgeLoops)
-innerNeck = roundedSquare(VERTICES_PER_EDGE_LOOP, CENTER, NECK_DIAMETER-THICKNESS*2, NECK_HEIGHT, TOP_CORNER_RADIUS)
+innerNeck = roundedSquare(VERTICES_PER_EDGE_LOOP, CENTER, NECK_INNER_DIAMETER, NECK_HEIGHT, TOP_CORNER_RADIUS)
 mesh.addEdgeLoop(innerNeck)
 
 # move in and down to inner body
@@ -539,9 +545,9 @@ splinedEdgeLoops = bsplineEdgeLoops(anchorEdgeLoops, targetLength)
 mesh.updateEdgeLoops(splinedEdgeLoops, subdivideStart, subdivideEnd)
 
 # displace edge loops
-offsetBefore = 0.25
-offsetAfter = 0.25
-delta = (displaceEnd-displaceStart-1) * 2**SUBDIVIDE_Y
+offsetBefore = 0.05
+offsetAfter = 0
+delta = (displaceEnd-displaceStart) * 2**SUBDIVIDE_Y
 displaceStart = subdivideStart + (displaceStart-subdivideStart) * 2**SUBDIVIDE_Y + int(offsetBefore * delta)
 displaceEnd = displaceStart + delta + int(offsetAfter * delta)
 originalEdgeLoops = mesh.edgeLoops[displaceStart:displaceEnd]
