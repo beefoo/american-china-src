@@ -9,47 +9,48 @@ import sys
 OUTPUT_FILE = "imgMap.png"
 TARGET_W = 2048
 TARGET_H = 512
-CHARS_LINES = 4
-CHARS_PER_LINE = 7
-IMAGE_SCALE = 0.25
-MARGIN_X = TARGET_H / 4.0
-MARGIN_Y = TARGET_H / 128.0
-CENTER_MARGIN = MARGIN_X * 0.2
+SIDES = 4
+COLS_PER_SIDE = 3
+ROWS_PER_SIDE = 3
+IMAGE_SCALE = 0.35
+
+SIDE_WIDTH = TARGET_W / SIDES
+SIDE_MARGIN_X = TARGET_H / 12.0
+SIDE_MARGIN_Y = TARGET_H / 128.0
+COL_MARGIN = TARGET_H * 0
+COL_WIDTH = 1.0 * (SIDE_WIDTH - SIDE_MARGIN_X * 2 - COL_MARGIN * (COLS_PER_SIDE-1)) / COLS_PER_SIDE
+ROW_HEIGHT = 1.0 * (TARGET_H - SIDE_MARGIN_Y * 2) / ROWS_PER_SIDE
 
 imBase = Image.new('RGB', (TARGET_W, TARGET_H), (255,255,255))
-cols = 4
-colWidth = 1.0 * TARGET_W / cols - MARGIN_X * 2
-colHeight = 1.0 * TARGET_H - MARGIN_Y * 2
-colX = MARGIN_X
-colY = MARGIN_Y * 0.5
-rowHeight = colHeight / cols
-cellHeight = rowHeight
-cellWidth = (colWidth - CENTER_MARGIN) * 0.5
 
-# retrieve image data
-x = colX
-y = colY
-for i in range(CHARS_LINES):
-    y = colY + (rowHeight * 0.5)
-    for j in range(CHARS_PER_LINE):
-        line = CHARS_LINES-i
-        char = j + 5
-        if j > 2:
-            char = j - 2
-        filename = "chars/char_%s-%s.png" % (line, char)
-        im = Image.open(filename)
-        imgW, imgH = im.size
-        tw = imgW * IMAGE_SCALE
-        th = imgH * IMAGE_SCALE
-        deltaX = x + round((cellWidth - tw) * 0.5)
-        deltaY = y + round((cellHeight - th) * 0.5)
-        im.thumbnail((tw, th))
-        imBase.paste(im, (int(deltaX), int(deltaY)), im)
-        y += rowHeight
-        if char==7:
-            x += cellWidth + CENTER_MARGIN
-            y = colY
-    x += cellWidth + (colX * 2)
+# going from right to left
+for i in range(SIDES):
+
+    line = i+1
+    char = 1
+
+    for j in range(COLS_PER_SIDE):
+
+        cx = TARGET_W - SIDE_WIDTH * i - SIDE_MARGIN_X - j * (COL_WIDTH + COL_MARGIN) - COL_WIDTH * 0.5
+        rows = ROWS_PER_SIDE
+        if j % 2 == 0:
+            rows = 2
+
+        for k in range(rows):
+
+            cy = SIDE_MARGIN_Y + ROW_HEIGHT * k + ROW_HEIGHT * 0.5
+            filename = "chars/char_%s-%s.png" % (line, char)
+            im = Image.open(filename)
+            imgW, imgH = im.size
+            tw = imgW * IMAGE_SCALE
+            th = imgH * IMAGE_SCALE
+            x = cx - tw * 0.5
+            y = cy - th * 0.5
+
+            im.thumbnail((tw, th))
+            imBase.paste(im, (int(x), int(y)), im)
+
+            char += 1
 
 imBase.save(OUTPUT_FILE)
 print "Saved %s" % OUTPUT_FILE

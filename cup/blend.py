@@ -70,5 +70,5 @@ for d in data:
     obj.modifiers["dec"].ratio = 0.24
 
     # Apply modifiers
-    # obj.modifier_apply(apply_as='DATA', modifier="subd")
-    # obj.modifier_apply(apply_as='DATA', modifier="dec")
+    # bpy.ops.object.modifier_apply(apply_as='DATA', modifier="subd")
+    # bpy.ops.object.modifier_apply(apply_as='DATA', modifier="dec")
