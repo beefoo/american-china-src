@@ -13,9 +13,11 @@ SIDES = 4
 COLS_PER_SIDE = 3
 ROWS_PER_SIDE = 3
 IMAGE_SCALE = 0.35
+WARP_INNER_X = 1.2
+WARP_OUTER_X = 0.8
 
 SIDE_WIDTH = TARGET_W / SIDES
-SIDE_MARGIN_X = TARGET_H / 12.0
+SIDE_MARGIN_X = TARGET_H / 24.0
 SIDE_MARGIN_Y = TARGET_H / 128.0
 COL_MARGIN = TARGET_H * 0
 COL_WIDTH = 1.0 * (SIDE_WIDTH - SIDE_MARGIN_X * 2 - COL_MARGIN * (COLS_PER_SIDE-1)) / COLS_PER_SIDE
@@ -33,8 +35,10 @@ for i in range(SIDES):
 
         cx = TARGET_W - SIDE_WIDTH * i - SIDE_MARGIN_X - j * (COL_WIDTH + COL_MARGIN) - COL_WIDTH * 0.5
         rows = ROWS_PER_SIDE
+        warpX = WARP_INNER_X
         if j % 2 == 0:
             rows = 2
+            warpX = WARP_OUTER_X
 
         for k in range(rows):
 
@@ -42,12 +46,12 @@ for i in range(SIDES):
             filename = "chars/char_%s-%s.png" % (line, char)
             im = Image.open(filename)
             imgW, imgH = im.size
-            tw = imgW * IMAGE_SCALE
+            tw = imgW * IMAGE_SCALE * warpX
             th = imgH * IMAGE_SCALE
             x = cx - tw * 0.5
             y = cy - th * 0.5
 
-            im.thumbnail((tw, th))
+            im = im.resize((int(tw), int(th)))
             imBase.paste(im, (int(x), int(y)), im)
 
             char += 1
