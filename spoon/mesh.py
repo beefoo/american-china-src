@@ -23,6 +23,9 @@ DATA_PRECISION = 3
 START_YEAR = 1880
 END_YEAR = 2010
 YEAR_INCR = 10
+BASE_YEARS = [1920, 1950]           # these years will be the flat base
+CUP_YEARS = [START_YEAR, 1960]      # these years will make the cup of the spoon
+HANDLE_YEARS = [1970, END_YEAR]     # these years will make the handle of the spoon
 
 # helper options
 ADD_MISSING_YEARS = False
@@ -30,7 +33,14 @@ SHOW_GRAPH = False
 OUTPUT_SVG = False
 SVG_FILE = "data.svg"
 
+BASE_VERTICES = 16 # don't change this as it will break rounded rectangles
+SUBDIVIDE_Y = 0 # will subdivide base vertices B * 2^x
+SUBDIVIDE_X = 0
+VERTICES_PER_EDGE_LOOP = BASE_VERTICES * 2**SUBDIVIDE_X
+print "%s vertices per edge loop" % VERTICES_PER_EDGE_LOOP
+
 # cup config in mm
+CENTER = (0, 0, 0)
 PRECISION = 8
 LENGTH = 140.0
 WIDTH = 45.0
@@ -38,6 +48,114 @@ HEIGHT = 60.0
 EDGE_RADIUS = 2.0
 THICKNESS = 4.0
 DISPLACEMENT_DEPTH = 2.0
+INSET_WIDTH = 1.0
+
+WIDTHS = [(0, 0.2), (0.2, 1.0), (0.6, 0.4), (0.9, 0.3), (1.0, 0.1)]
+BASE_WIDTH = WIDTH * 0.5
+
+def ellipse(vertices, center, r1, r2, z):
+    verts = []
+    edgesPerSide = vertices / 4
+    # add the top
+    for i in range(edgesPerSide):
+        x = 1.0 * i / edgesPerSide * 2 - 1
+        verts.append((x,-1.0))
+    # right
+    for i in range(edgesPerSide):
+        y = 1.0 * i / edgesPerSide * 2 - 1
+        verts.append((1.0, y))
+    # bottom
+    for i in range(edgesPerSide):
+        x = 1.0 * i / edgesPerSide * 2 - 1
+        verts.append((-x, 1.0))
+    # left
+    for i in range(edgesPerSide):
+        y = 1.0 * i / edgesPerSide * 2 - 1
+        verts.append((-1.0, -y))
+
+    e = []
+    for v in verts:
+        x = v[0]
+        y = v[1]
+        u = x * math.sqrt(1.0 - 0.5 * (y * y))
+        v = y * math.sqrt(1.0 - 0.5 * (x * x))
+        # convert to actual unit
+        u = u * r1 + center[0]
+        v = v * r2 + center[1]
+        e.append((u,v,z))
+
+    return e
+
+def ellipseMesh(vertices, center, r1, r2, z, reverse=False):
+    verts = []
+    edgesPerSide = vertices / 4
+
+    # create a rectangular matrix of vertices mapped to circular disc coordinates (UV)
+    # https://stackoverflow.com/questions/13211595/how-can-i-convert-coordinates-on-a-circle-to-coordinates-on-a-square
+    for row in range(edgesPerSide+1):
+        for col in range(edgesPerSide+1):
+            # x, y is between -1 and 1
+            x = 1.0 * col / edgesPerSide * 2 - 1
+            y = 1.0 * row / edgesPerSide * 2 - 1
+            u = x * math.sqrt(1.0 - 0.5 * (y * y))
+            v = y * math.sqrt(1.0 - 0.5 * (x * x))
+            # convert to actual unit
+            u = u * r1 + center[0]
+            v = v * r2 + center[1]
+            verts.append((u,v,z))
+
+    vertLen = len(verts)
+    centerIndex = int(vertLen / 2)
+    centerRow = edgesPerSide / 2
+    centerCol = edgesPerSide/ 2
+
+    # start with one point at the center
+    edgeLoops = [[verts[centerIndex]]]
+
+    # add loops until we reach outer loop
+    edges = 2
+    while edges <= edgesPerSide:
+        edgeLoop = []
+        r = edges/2
+        # add top
+        for i in range(edges):
+            row = centerRow - r
+            col = centerCol + lerp(-r, r, 1.0 * i / edges)
+            i = int(row*(edgesPerSide+1) + col)
+            edgeLoop.append(verts[i])
+
+        # add right
+        for i in range(edges):
+            row = centerRow + lerp(-r, r, 1.0 * i / edges)
+            col = centerCol + r
+            i = int(row*(edgesPerSide+1) + col)
+            edgeLoop.append(verts[i])
+
+        # add bottom
+        for i in range(edges):
+            row = centerRow + r
+            col = centerCol + lerp(r, -r, 1.0 * i / edges)
+            i = int(row*(edgesPerSide+1) + col)
+            edgeLoop.append(verts[i])
+
+        # add left
+        for i in range(edges):
+            row = centerRow + lerp(r, -r, 1.0 * i / edges)
+            col = centerCol - r
+            i = int(row*(edgesPerSide+1) + col)
+            edgeLoop.append(verts[i])
+
+        # add edges
+        edgeLoops.append(edgeLoop)
+        edges += 2
+
+    if reverse:
+        edgeLoops = reversed(edgeLoops)
+
+    return edgeLoops
+
+def lerp(a, b, mu):
+    return (b-a) * mu + a
 
 def norm(value, a, b):
     return 1.0 * (value - a) / (b - a)
@@ -60,6 +178,150 @@ def readCSV(filename):
                     except ValueError:
                         rows[i][key] = value
     return rows
+
+def roundP(vList, precision):
+    rounded = []
+    for v in vList:
+        t = (round(v[0], precision), round(v[1], precision), round(v[2], precision))
+        rounded.append(t)
+    return rounded
+
+# north => -90 degrees or 270 degrees
+def translatePoint(p, degrees, distance):
+    radians = math.radians(degrees)
+    x2 = p[0] + distance * math.cos(radians)
+    y2 = p[1] + distance * math.sin(radians)
+    return (x2, y2)
+
+class Mesh:
+
+    def __init__(self):
+        self.verts = []
+        self.edges = []
+        self.faces = []
+        self.edgeLoops = []
+
+        self.queueLoopAfter = False
+
+    def addEdgeLoop(self, loop, loopBefore=False, loopAfter=False):
+        # add an edge loop after the previous one
+        if self.queueLoopAfter is not False:
+            self.addEdgeLoopHelper(loop, self.queueLoopAfter, True)
+            self.queueLoopAfter = False
+        # add an edge loop before the next one
+        if loopBefore is not False:
+            self.addEdgeLoopHelper(loop, loopBefore, False)
+        # add an edge loop after the next one
+        if loopAfter is not False:
+            self.queueLoopAfter = loopAfter
+
+        self.edgeLoops.append(loop)
+
+    def addEdgeLoops(self, loops):
+        for loop in loops:
+            self.addEdgeLoop(loop)
+
+    def addEdgeLoopHelper(self, nextLoop, amount, after=True):
+        prevLoop = self.edgeLoops[-1]
+        d = distance(prevLoop[0], nextLoop[0])
+        lerpAmount = amount / d
+        if lerpAmount >= 0.5:
+            print "Edge loop %s helper too close to neighbor loop" % len(self.edgeLoops)
+            return False
+        if not after:
+            lerpAmount = 1.0 - lerpAmount
+        loop = lerpEdge(prevLoop, nextLoop, lerpAmount)
+        self.edgeLoops.append(loop)
+
+    def joinEdgeLoops(self, loopA, loopB, indexOffset):
+        faces = []
+        aLen = len(loopA)
+        bLen = len(loopB)
+
+        # number of vertices differ
+        if abs(bLen - aLen) > 0:
+
+            # assume we're going from bigger to smaller
+            bigger = aLen
+            smaller = bLen
+            biggerOffset = indexOffset
+            smallerOffset = indexOffset + aLen
+
+            # going from smaller to bigger
+            if smaller > bigger:
+                bigger = bLen
+                smaller = aLen
+                smallerOffset = indexOffset
+                biggerOffset = indexOffset + aLen
+
+            edgesPerSide = bigger / 4
+
+            for i in range(bigger-4):
+                offset = abs(i-1) / (edgesPerSide-1)
+                v1 = i + offset + biggerOffset
+                v2 = v1 + 1
+                v3 = i + offset - offset * 2 + smallerOffset
+                v4 = v3 - 1
+
+                # special case for first
+                if i==0:
+                    v1 = biggerOffset
+                    v2 = v1 + 1
+                    v3 = smallerOffset
+                    v4 = bigger - 1 + biggerOffset
+
+                # special case for reach corner face
+                elif i % (edgesPerSide-1) == 0:
+                    v3 = v2 + 1
+
+                # special case for last
+                elif i==(bigger-5):
+                    v3 = smallerOffset
+
+                faces.append((v1, v2, v3, v4))
+
+        # equal number of vertices
+        else:
+            for i in range(aLen):
+                v1 = i
+                v2 = i + 1
+                v3 = i + 1 + aLen
+                v4 = i + aLen
+                if v2 >= aLen:
+                    v2 = 0
+                    v3 = aLen
+                faces.append((v1+indexOffset, v2+indexOffset, v3+indexOffset, v4+indexOffset))
+
+        self.faces += faces
+
+    # join all the edge loop together
+    def processEdgeloops(self):
+        indexOffset = 0
+
+        for i, edgeLoop in enumerate(self.edgeLoops):
+            # add loop's vertices
+            self.verts += edgeLoop
+
+            # if this is the first edge loop and it's a quad, add it's face
+            if i == 0 and len(edgeLoop) == 4:
+                self.faces.append(range(4))
+
+            elif i > 0:
+                prev = self.edgeLoops[i-1]
+                self.joinEdgeLoops(prev, edgeLoop, indexOffset)
+                indexOffset += len(prev)
+
+        # if the last edge loop is a quad, add it's face
+        if len(self.edgeLoops[-1]) == 4:
+            self.faces.append([(i+indexOffset) for i in range(4)])
+
+    def updateEdgeLoops(self, loops, offset0=None, offset1=None):
+        if offset0 is None and offset1 is None:
+            self.edgeLoops = loops[:]
+        else:
+            before = self.edgeLoops[:offset0]
+            after = self.edgeLoops[offset1:]
+            self.edgeLoops = before + loops + after
 
 # read data
 data = readCSV(DATA_FILE)
@@ -122,46 +384,45 @@ if OUTPUT_SVG:
     dwg.save()
     print "Saved SVG file: %s" % SVG_FILE
 
-MESH_X = 64
-MESH_Y = 64
-WIDTHS = [(0, 0.2), (0.2, 1.0), (0.6, 0.4), (0.9, 0.3), (1.0, 0.1)]
-func3y = interpolate.interp1d([w[0] for w in WIDTHS], [w[1] for w in WIDTHS], kind='cubic')
 
-# turn data into a mesh
-xpoints = np.linspace(0, 1, num=(MESH_X+1))
-ypoints = func3y(xpoints)
-zpoints = func1(xpoints)
-points = list(zip(xpoints, ypoints, zpoints))
-points = [(p[0]*LENGTH, p[1]*WIDTH, p[2]*HEIGHT) for p in points]
+mesh = Mesh()
+baseRadiusX = 1.0 * (BASE_YEARS[1]-BASE_YEARS[0]) / (END_YEAR-START_YEAR) * LENGTH * 0.5
+baseRadiusY = BASE_WIDTH * 0.5
 
-# generate verts
-verts = []
-for row in range(MESH_Y+1):
-    py = 1.0 * row / MESH_Y
-    my = 0
-    if py < 0.5:
-        my = 0.5 - py
-    elif py > 0.5:
-        my = -1 * (py - 0.5)
-    for col in range(MESH_X+1):
-        x = points[col][0]
-        y = points[col][1] * my
-        z = points[col][2]
-        verts.append((x,y,z))
+# start at the base inset with an ellipse mesh
+r1 = baseRadiusX - INSET_WIDTH*0.5
+r2 = baseRadiusY - INSET_WIDTH*0.5
+baseInset = ellipseMesh(VERTICES_PER_EDGE_LOOP, CENTER, r1, r2, 0)
+mesh.addEdgeLoops(baseInset)
 
-# generate faces
-faces = []
-for row in range(MESH_Y):
-    for col in range(MESH_X):
-        v1 = row * (MESH_X+1) + col
-        v2 = v1 + 1
-        v3 = v1 + MESH_X + 2
-        v4 = v1 + MESH_X + 1
-        faces.append((v1, v2, v3, v4))
+# move out to base
+base = ellipse(VERTICES_PER_EDGE_LOOP, CENTER, baseRadiusX, baseRadiusY, 0)
+mesh.addEdgeLoop(base)
+
+
+# func3y = interpolate.interp1d([w[0] for w in WIDTHS], [w[1] for w in WIDTHS], kind='cubic')
+#
+# # turn data into a mesh
+# xpoints = np.linspace(0, 1, num=(MESH_X+1))
+# ypoints = func3y(xpoints)
+# zpoints = func1(xpoints)
+# points = list(zip(xpoints, ypoints, zpoints))
+# points = [(p[0]*LENGTH, p[1]*WIDTH, p[2]*HEIGHT) for p in points]
+
+print "Calculating faces..."
+# create faces from edges
+mesh.processEdgeloops()
 
 # save data
 data = [
-    {"name": "spoon", "verts": verts, "edges": [], "faces": faces, "location": [-LENGTH*0.5, 0, 0]}
+    {
+        "name": "Spoon",
+        "verts": roundP(mesh.verts, PRECISION),
+        "edges": [],
+        "faces": mesh.faces,
+        "location": CENTER,
+        "flipFaces": range((VERTICES_PER_EDGE_LOOP/4)**2)
+    }
 ]
 
 with open(OUTPUT_FILE, 'w') as f:
