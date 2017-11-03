@@ -363,6 +363,7 @@ ys = [d[1] for d in ndata]
 func1 = interpolate.interp1d(xs, ys, kind='linear')
 func3 = interpolate.interp1d(xs, ys, kind='cubic')
 xyears = np.linspace(0, 1, num=(END_YEAR-START_YEAR))
+func3y = interpolate.interp1d([w[0] for w in WIDTHS], [w[1] for w in WIDTHS], kind='cubic')
 
 # plot data
 if SHOW_GRAPH:
@@ -398,6 +399,45 @@ mesh.addEdgeLoops(baseInset)
 # move out to base
 base = ellipse(VERTICES_PER_EDGE_LOOP, CENTER, baseRadiusX, baseRadiusY, 0)
 mesh.addEdgeLoop(base)
+
+# get cup data
+cupYears = (norm(CUP_YEARS[0], START_YEAR, END_YEAR), norm(CUP_YEARS[1], START_YEAR, END_YEAR))
+baseYears = (norm(BASE_YEARS[0], START_YEAR, END_YEAR), norm(BASE_YEARS[1], START_YEAR, END_YEAR))
+baseYearCenter = (baseYears[1] - baseYears[0]) * 0.5 +  baseYears[0]
+cupData = [d for d in ndata if d[0] >= cupYears[0] and d[0] < baseYears[0] or d[0] > baseYears[1] and d[0] <= cupYears[1]]
+cupData = sorted(cupData, key=lambda d: d[1])
+
+for d in cupData:
+
+    xsample = np.linspace(baseYears[1], 1, num=100)
+
+    # point is right of the base
+    if d[0] > baseYears[0]:
+        xsample = np.linspace(0, baseYears[0], num=100)
+
+    # get the curve of the opposite side
+    ysample1 = func3(xsample)
+    straightLine = interpolate.interp1d([0, 1], [d[1], d[1]], kind='linear')
+    ysample2 = straightLine(xsample)
+
+    # https://stackoverflow.com/questions/28766692/intersection-of-two-graphs-in-python-find-the-x-value
+    intersections = list(np.argwhere(np.diff(np.sign(ysample2 - ysample1)) != 0).reshape(-1) + 0)
+
+    if len(intersections) > 0:
+        intersectionX = xsample[intersections[0]]
+
+        cx = d[0] - (d[0] - intersectionX) * 0.5
+
+        center = ((cx-baseYearCenter) * LENGTH, 0, d[1] * HEIGHT)
+        width = func3y(cx) * WIDTH
+        r1 = abs(d[0] - intersectionX) * LENGTH * 0.5
+        r2 = width * 0.5
+        # move up and out to next layer of the cup
+        base = ellipse(VERTICES_PER_EDGE_LOOP, center, r1, r2, center[2])
+        mesh.addEdgeLoop(base)
+
+    else:
+        print "No intersection found for (%s, %s)" % d
 
 
 # func3y = interpolate.interp1d([w[0] for w in WIDTHS], [w[1] for w in WIDTHS], kind='cubic')

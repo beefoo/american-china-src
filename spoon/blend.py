@@ -53,9 +53,9 @@ for d in data:
     # Calculate the edges
     mesh.update(calc_edges=True)
 
-    # # Flip some of the faces
-    # for i in d["flipFaces"]:
-    #     mesh.polygons[i].flip()
+    # Flip some of the faces
+    for i in d["flipFaces"]:
+        mesh.polygons[i].flip()
 
     # Select the object
     obj.select = True
