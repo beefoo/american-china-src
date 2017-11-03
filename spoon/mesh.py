@@ -50,7 +50,7 @@ THICKNESS = 4.0
 DISPLACEMENT_DEPTH = 2.0
 INSET_WIDTH = 1.0
 
-WIDTHS = [(0, 0.2), (0.2, 1.0), (0.6, 0.4), (0.9, 0.3), (1.0, 0.1)]
+WIDTHS = [(0, 0.2), (0.2, 1.0), (0.6, 0.8), (0.9, 0.4), (1.0, 0.2)]
 BASE_WIDTH = WIDTH * 0.5
 
 def ellipse(vertices, center, r1, r2, z):
@@ -201,10 +201,11 @@ class Mesh:
         self.faces = []
         self.edgeLoops = []
         self.offsets = []
+        self.closedLoops = []
 
         self.queueLoopAfter = False
 
-    def addEdgeLoop(self, loop, loopBefore=False, loopAfter=False, offset=False):
+    def addEdgeLoop(self, loop, loopBefore=False, loopAfter=False, offset=False, closed=True):
         # add an edge loop after the previous one
         if self.queueLoopAfter is not False:
             self.addEdgeLoopHelper(loop, self.queueLoopAfter, True)
@@ -218,6 +219,7 @@ class Mesh:
 
         self.edgeLoops.append(loop)
         self.offsets.append(offset)
+        self.closedLoops.append(closed)
 
     def addEdgeLoops(self, loops):
         for loop in loops:
@@ -236,8 +238,14 @@ class Mesh:
         self.edgeLoops.append(loop)
         self.offsets.append(0)
 
-    def joinEdgeLoops(self, loopA, loopB, indexOffset, offsetA, offsetB):
+    def joinEdgeLoops(self, a, b, indexOffset):
         faces = []
+        loopA = self.edgeLoops[a]
+        loopB = self.edgeLoops[b]
+        offsetA = self.offsets[a]
+        offsetB = self.offsets[b]
+        closedA = self.closedLoops[a]
+        closedB = self.closedLoops[b]
         aLen = len(loopA)
         bLen = len(loopB)
 
@@ -252,7 +260,7 @@ class Mesh:
                 amtSmaller = bLen
                 amtBigger = aLen
 
-            for i in range(amtSmaller):
+            for i in range(amtSmaller-1):
                 v1 = i + offset
                 v2 = i + offset + 1
                 v3 = i + 1 + amtBigger
@@ -306,7 +314,10 @@ class Mesh:
 
         # equal number of vertices
         else:
-            for i in range(aLen):
+            amt = aLen
+            if closedA is False and closedB is False:
+                amt -= 1
+            for i in range(amt):
                 v1 = i
                 v2 = i + 1
                 v3 = i + 1 + aLen
@@ -331,9 +342,8 @@ class Mesh:
                 self.faces.append(range(4))
 
             elif i > 0:
-                prev = self.edgeLoops[i-1]
-                self.joinEdgeLoops(prev, edgeLoop, indexOffset, self.offsets[i-1], self.offsets[i])
-                indexOffset += len(prev)
+                self.joinEdgeLoops(i-1, i, indexOffset)
+                indexOffset += len(self.edgeLoops[i-1])
 
         # if the last edge loop is a quad, add it's face
         if len(self.edgeLoops[-1]) == 4:
@@ -471,7 +481,7 @@ handleCenter = baseYearCenter
 for i, d in enumerate(handleData):
 
     center = ((handleCenter-baseYearCenter) * LENGTH, 0, d[1] * HEIGHT)
-    width = func3y(handleCenter) * WIDTH
+    width = func3y(d[0]) * WIDTH
     r1 = (d[0] - handleCenter) * LENGTH
     r2 = width * 0.5
     # move up and out to next layer of the cup
@@ -482,9 +492,9 @@ for i, d in enumerate(handleData):
 
     # offset the first partial loop
     if i <= 0:
-        mesh.addEdgeLoop(partialLoop, False, False, vPerSide)
+        mesh.addEdgeLoop(partialLoop, False, False, vPerSide, False)
     else:
-        mesh.addEdgeLoop(partialLoop)
+        mesh.addEdgeLoop(partialLoop, False, False, False, False)
 
 
 print "Calculating faces..."
