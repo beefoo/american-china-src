@@ -200,10 +200,11 @@ class Mesh:
         self.edges = []
         self.faces = []
         self.edgeLoops = []
+        self.offsets = []
 
         self.queueLoopAfter = False
 
-    def addEdgeLoop(self, loop, loopBefore=False, loopAfter=False):
+    def addEdgeLoop(self, loop, loopBefore=False, loopAfter=False, offset=False):
         # add an edge loop after the previous one
         if self.queueLoopAfter is not False:
             self.addEdgeLoopHelper(loop, self.queueLoopAfter, True)
@@ -216,6 +217,7 @@ class Mesh:
             self.queueLoopAfter = loopAfter
 
         self.edgeLoops.append(loop)
+        self.offsets.append(offset)
 
     def addEdgeLoops(self, loops):
         for loop in loops:
@@ -232,14 +234,36 @@ class Mesh:
             lerpAmount = 1.0 - lerpAmount
         loop = lerpEdge(prevLoop, nextLoop, lerpAmount)
         self.edgeLoops.append(loop)
+        self.offsets.append(0)
 
-    def joinEdgeLoops(self, loopA, loopB, indexOffset):
+    def joinEdgeLoops(self, loopA, loopB, indexOffset, offsetA, offsetB):
         faces = []
         aLen = len(loopA)
         bLen = len(loopB)
 
+        # an offset is defined and number of vertices differ
+        if (offsetA is not False or offsetB is not False) and abs(bLen - aLen) > 0:
+
+            offset = offsetA
+            amtSmaller = aLen
+            amtBigger = bLen
+            if offset is False:
+                offset = offsetB
+                amtSmaller = bLen
+                amtBigger = aLen
+
+            for i in range(amtSmaller):
+                v1 = i + offset
+                v2 = i + offset + 1
+                v3 = i + 1 + amtBigger
+                v4 = i + amtBigger
+                if v2 >= amtBigger:
+                    v2 = 0
+                    v3 = amtBigger
+                faces.append((v1+indexOffset, v2+indexOffset, v3+indexOffset, v4+indexOffset))
+
         # number of vertices differ
-        if abs(bLen - aLen) > 0:
+        elif abs(bLen - aLen) > 0:
 
             # assume we're going from bigger to smaller
             bigger = aLen
@@ -308,7 +332,7 @@ class Mesh:
 
             elif i > 0:
                 prev = self.edgeLoops[i-1]
-                self.joinEdgeLoops(prev, edgeLoop, indexOffset)
+                self.joinEdgeLoops(prev, edgeLoop, indexOffset, self.offsets[i-1], self.offsets[i])
                 indexOffset += len(prev)
 
         # if the last edge loop is a quad, add it's face
@@ -433,21 +457,35 @@ for d in cupData:
         r1 = abs(d[0] - intersectionX) * LENGTH * 0.5
         r2 = width * 0.5
         # move up and out to next layer of the cup
-        base = ellipse(VERTICES_PER_EDGE_LOOP, center, r1, r2, center[2])
-        mesh.addEdgeLoop(base)
+        edgeLoop = ellipse(VERTICES_PER_EDGE_LOOP, center, r1, r2, center[2])
+        mesh.addEdgeLoop(edgeLoop)
 
     else:
         print "No intersection found for (%s, %s)" % d
 
+# get handle data
+handleYears = (norm(HANDLE_YEARS[0], START_YEAR, END_YEAR), norm(HANDLE_YEARS[1], START_YEAR, END_YEAR))
+handleData = [d for d in ndata if d[0] >= handleYears[0] and d[0] <= handleYears[1]]
+handleCenter = baseYearCenter
 
-# func3y = interpolate.interp1d([w[0] for w in WIDTHS], [w[1] for w in WIDTHS], kind='cubic')
-#
-# # turn data into a mesh
-# xpoints = np.linspace(0, 1, num=(MESH_X+1))
-# ypoints = func3y(xpoints)
-# zpoints = func1(xpoints)
-# points = list(zip(xpoints, ypoints, zpoints))
-# points = [(p[0]*LENGTH, p[1]*WIDTH, p[2]*HEIGHT) for p in points]
+for i, d in enumerate(handleData):
+
+    center = ((handleCenter-baseYearCenter) * LENGTH, 0, d[1] * HEIGHT)
+    width = func3y(handleCenter) * WIDTH
+    r1 = (d[0] - handleCenter) * LENGTH
+    r2 = width * 0.5
+    # move up and out to next layer of the cup
+    edgeLoop = ellipse(VERTICES_PER_EDGE_LOOP, center, r1, r2, center[2])
+
+    vPerSide = VERTICES_PER_EDGE_LOOP / 4
+    partialLoop = edgeLoop[vPerSide:(vPerSide*2+1)]
+
+    # offset the first partial loop
+    if i <= 0:
+        mesh.addEdgeLoop(partialLoop, False, False, vPerSide)
+    else:
+        mesh.addEdgeLoop(partialLoop)
+
 
 print "Calculating faces..."
 # create faces from edges
