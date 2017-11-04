@@ -50,7 +50,7 @@ THICKNESS = 4.0
 DISPLACEMENT_DEPTH = 2.0
 INSET_WIDTH = 1.0
 
-WIDTHS = [(0, 0.2), (0.2, 1.0), (0.6, 0.8), (0.9, 0.4), (1.0, 0.2)]
+WIDTHS = [(0, 0.2), (0.2, 1.0), (0.6, 0.8), (0.9, 0.4), (1.0, 0.3)]
 BASE_WIDTH = WIDTH * 0.5
 
 def ellipse(vertices, center, r1, r2, z):
@@ -192,6 +192,32 @@ def translatePoint(p, degrees, distance):
     x2 = p[0] + distance * math.cos(radians)
     y2 = p[1] + distance * math.sin(radians)
     return (x2, y2)
+
+def warpLoop(edgeLoop, center, length, height, width, funcY, funcZ):
+    return edgeLoop
+
+    warped = []
+    for i, v in enumerate(edgeLoop):
+        hl = length*0.5
+        hw = width*0.5
+        xn = norm(v[0], center[0]-hl, center[0]+hl)
+        yn = norm(v[1], center[1]-hw, center[1]+hw) - 0.5
+        xn = min(xn, 1.0)
+        xn = max(xn, 0.0)
+        fyn = abs(funcY(xn) - 0.5)
+        fzn = funcZ(xn)
+        x = v[0]
+        y = center[1] + width * fyn * yn
+        z = v[2] # TODO
+        warped.append((x, y, z))
+    return warped
+
+def warpLoops(edgeLoops, center, length, height, width, funcY, funcZ):
+    warped = []
+    for edgeLoop in edgeLoops:
+        wloop = warpLoop(edgeLoop, center, length, height, width, funcY, funcZ)
+        warped.append(wloop)
+    return warped
 
 class Mesh:
 
@@ -428,10 +454,12 @@ baseRadiusY = BASE_WIDTH * 0.5
 r1 = baseRadiusX - INSET_WIDTH*0.5
 r2 = baseRadiusY - INSET_WIDTH*0.5
 baseInset = ellipseMesh(VERTICES_PER_EDGE_LOOP, CENTER, r1, r2, 0)
+baseInset = warpLoops(baseInset, CENTER, LENGTH, HEIGHT, WIDTH, func3y, func3)
 mesh.addEdgeLoops(baseInset)
 
 # move out to base
 base = ellipse(VERTICES_PER_EDGE_LOOP, CENTER, baseRadiusX, baseRadiusY, 0)
+base = warpLoop(base, CENTER, LENGTH, HEIGHT, WIDTH, func3y, func3)
 mesh.addEdgeLoop(base)
 
 # get cup data
@@ -463,11 +491,13 @@ for d in cupData:
         cx = d[0] - (d[0] - intersectionX) * 0.5
 
         center = ((cx-baseYearCenter) * LENGTH, 0, d[1] * HEIGHT)
-        width = func3y(cx) * WIDTH
+        width = lerp(BASE_WIDTH, WIDTH, d[1])
+        width = func3y(cx) * width
         r1 = abs(d[0] - intersectionX) * LENGTH * 0.5
         r2 = width * 0.5
         # move up and out to next layer of the cup
         edgeLoop = ellipse(VERTICES_PER_EDGE_LOOP, center, r1, r2, center[2])
+        edgeLoop = warpLoop(edgeLoop, CENTER, LENGTH, HEIGHT, WIDTH, func3y, func3)
         mesh.addEdgeLoop(edgeLoop)
 
     else:
@@ -486,6 +516,7 @@ for i, d in enumerate(handleData):
     r2 = width * 0.5
     # move up and out to next layer of the cup
     edgeLoop = ellipse(VERTICES_PER_EDGE_LOOP, center, r1, r2, center[2])
+    edgeLoop = warpLoop(edgeLoop, CENTER, LENGTH, HEIGHT, WIDTH, func3y, func3)
 
     vPerSide = VERTICES_PER_EDGE_LOOP / 4
     partialLoop = edgeLoop[vPerSide:(vPerSide*2+1)]
