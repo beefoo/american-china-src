@@ -9,6 +9,7 @@
 import csv
 import json
 import math
+import matplotlib.pyplot as plt
 import numpy as np
 import os
 from pprint import pprint
@@ -43,14 +44,18 @@ print "%s vertices per edge loop" % VERTICES_PER_EDGE_LOOP
 CENTER = (0, 0, 0)
 PRECISION = 8
 LENGTH = 140.0
-WIDTH = 45.0
+WIDTH = 50.0
 HEIGHT = 60.0
 EDGE_RADIUS = 2.0
 THICKNESS = 4.0
 DISPLACEMENT_DEPTH = 2.0
 INSET_WIDTH = 1.0
 
-WIDTHS = [(0, 0.2), (0.2, 1.0), (0.6, 0.8), (0.9, 0.4), (1.0, 0.3)]
+# TOP_CONTROL_POINTS = [(0, 0.42), (0.1, 0.33), (0.5, 0.3), (0.7, 0.55), (0.82, 0.75), (1.0, 1.0)]
+# WIDTHS = [(0, 0.2), (0.2, 1.0), (0.6, 0.8), (0.9, 0.4), (1.0, 0.3)]
+TOP_CONTROL_POINTS = [(0, 0.42), (0.1, 0.36), (0.5, 0.33), (0.7, 0.55), (0.82, 0.4), (1.0, 0.6)]
+WIDTHS = [(0, 0.2), (0.2, 1.0), (0.6, 0.8), (0.9, 0.5), (1.0, 0.4)]
+
 BASE_WIDTH = WIDTH * 0.5
 
 def ellipse(vertices, center, r1, r2, z):
@@ -193,30 +198,35 @@ def translatePoint(p, degrees, distance):
     y2 = p[1] + distance * math.sin(radians)
     return (x2, y2)
 
-def warpLoop(edgeLoop, center, length, height, width, funcY, funcZ):
-    return edgeLoop
+def warpLoop(edgeLoop, center, length, height, funcZ, funcZt, scaleZ):
+    xs = [v[0] for v in edgeLoop]
+    ys = [v[1] for v in edgeLoop]
+    zs = [v[2] for v in edgeLoop]
+    minX = min(xs)
+    maxX = max(xs)
+    minY = min(ys)
+    maxY = max(ys)
+    maxZ = max(zs)
+    hl = length * 0.5
 
     warped = []
     for i, v in enumerate(edgeLoop):
-        hl = length*0.5
-        hw = width*0.5
-        xn = norm(v[0], center[0]-hl, center[0]+hl)
-        yn = norm(v[1], center[1]-hw, center[1]+hw) - 0.5
-        xn = min(xn, 1.0)
-        xn = max(xn, 0.0)
-        fyn = abs(funcY(xn) - 0.5)
-        fzn = funcZ(xn)
-        x = v[0]
-        y = center[1] + width * fyn * yn
-        z = v[2] # TODO
-        warped.append((x, y, z))
-    return warped
+        x, y, z = v
 
-def warpLoops(edgeLoops, center, length, height, width, funcY, funcZ):
-    warped = []
-    for edgeLoop in edgeLoops:
-        wloop = warpLoop(edgeLoop, center, length, height, width, funcY, funcZ)
-        warped.append(wloop)
+        if x > minX and x < maxX:
+            xd = norm(x, center[0]-hl, center[0]+hl)
+            xd = min(xd, 1.0)
+            xd = max(xd, 0.0)
+            xn = norm(x, minX, maxX)
+            xm = 1.0 - abs(xn * 2 - 1.0)
+
+            zn = funcZ(xd) # bottom
+            znt = funcZt(xd) # top
+            znt = lerp(zn, znt, scaleZ)
+            zn = lerp(maxZ / height, znt, xm)
+            z = zn * height - center[2]
+
+        warped.append((x, y, z))
     return warped
 
 class Mesh:
@@ -423,12 +433,12 @@ ys = [d[1] for d in ndata]
 func1 = interpolate.interp1d(xs, ys, kind='linear')
 func3 = interpolate.interp1d(xs, ys, kind='cubic')
 xyears = np.linspace(0, 1, num=(END_YEAR-START_YEAR))
+func3t = interpolate.interp1d([w[0] for w in TOP_CONTROL_POINTS], [w[1] for w in TOP_CONTROL_POINTS], kind='cubic')
 func3y = interpolate.interp1d([w[0] for w in WIDTHS], [w[1] for w in WIDTHS], kind='cubic')
 
 # plot data
 if SHOW_GRAPH:
-    import matplotlib.pyplot as plt
-    plt.plot(xs, ys, 'o', xyears, func1(xyears), '-', xyears, func3(xyears), '--')
+    plt.plot(xs, ys, 'o', xyears, func1(xyears), '-', xyears, func3(xyears), '--', xyears, func3t(xyears), '--')
     plt.show()
 
 # output svg line
@@ -454,12 +464,10 @@ baseRadiusY = BASE_WIDTH * 0.5
 r1 = baseRadiusX - INSET_WIDTH*0.5
 r2 = baseRadiusY - INSET_WIDTH*0.5
 baseInset = ellipseMesh(VERTICES_PER_EDGE_LOOP, CENTER, r1, r2, 0)
-baseInset = warpLoops(baseInset, CENTER, LENGTH, HEIGHT, WIDTH, func3y, func3)
 mesh.addEdgeLoops(baseInset)
 
 # move out to base
 base = ellipse(VERTICES_PER_EDGE_LOOP, CENTER, baseRadiusX, baseRadiusY, 0)
-base = warpLoop(base, CENTER, LENGTH, HEIGHT, WIDTH, func3y, func3)
 mesh.addEdgeLoop(base)
 
 # get cup data
@@ -469,7 +477,7 @@ baseYearCenter = (baseYears[1] - baseYears[0]) * 0.5 +  baseYears[0]
 cupData = [d for d in ndata if d[0] >= cupYears[0] and d[0] < baseYears[0] or d[0] > baseYears[1] and d[0] <= cupYears[1]]
 cupData = sorted(cupData, key=lambda d: d[1])
 
-for d in cupData:
+for i, d in enumerate(cupData):
 
     xsample = np.linspace(baseYears[1], 1, num=100)
 
@@ -497,7 +505,7 @@ for d in cupData:
         r2 = width * 0.5
         # move up and out to next layer of the cup
         edgeLoop = ellipse(VERTICES_PER_EDGE_LOOP, center, r1, r2, center[2])
-        edgeLoop = warpLoop(edgeLoop, CENTER, LENGTH, HEIGHT, WIDTH, func3y, func3)
+        edgeLoop = warpLoop(edgeLoop, CENTER, LENGTH, HEIGHT, func3, func3t, 1.0 * i / (len(cupData)-1))
         mesh.addEdgeLoop(edgeLoop)
 
     else:
@@ -516,7 +524,7 @@ for i, d in enumerate(handleData):
     r2 = width * 0.5
     # move up and out to next layer of the cup
     edgeLoop = ellipse(VERTICES_PER_EDGE_LOOP, center, r1, r2, center[2])
-    edgeLoop = warpLoop(edgeLoop, CENTER, LENGTH, HEIGHT, WIDTH, func3y, func3)
+    edgeLoop = warpLoop(edgeLoop, CENTER, LENGTH, HEIGHT, func3, func3t, 1.0)
 
     vPerSide = VERTICES_PER_EDGE_LOOP / 4
     partialLoop = edgeLoop[vPerSide:(vPerSide*2+1)]
