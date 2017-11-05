@@ -49,9 +49,9 @@ HEIGHT = 40.0
 EDGE_RADIUS = 2.0
 THICKNESS = 4.0
 DISPLACEMENT_DEPTH = 2.0
-INSET_WIDTH = 1.0
+INSET_WIDTH = 3.0
 
-WIDTHS = [(0, 0.2), (0.2, 1.0), (0.6, 0.8), (0.9, 0.4), (1.0, 0.3)]
+WIDTHS = [(0, 0.2), (0.2, 1.0), (0.6, 0.8), (0.9, 0.33), (1.0, 0.25)]
 
 BASE_WIDTH = WIDTH * 0.5
 
@@ -482,12 +482,14 @@ handleCenter = baseYearCenter
 
 for i, d in enumerate(handleData):
 
+    handleCenter = d[0] - 0.2 # bigger this number, the more inset the handle is
     center = ((handleCenter-baseYearCenter) * LENGTH, 0, d[1] * HEIGHT)
     width = func3y(d[0]) * WIDTH
     r1 = (d[0] - handleCenter) * LENGTH
     r2 = width * 0.5
     # move up and out to next layer of the cup
     edgeLoop = ellipse(VERTICES_PER_EDGE_LOOP, center, r1, r2, center[2])
+    # edgeLoop = warpLoop(edgeLoop)
 
     vPerSide = VERTICES_PER_EDGE_LOOP / 4
     partialLoop = edgeLoop[vPerSide:(vPerSide*2+1)]

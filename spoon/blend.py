@@ -60,10 +60,10 @@ for d in data:
     # Select the object
     obj.select = True
 
-    # # Add subsurf modifier
-    # obj.modifiers.new("subd", type='SUBSURF')
-    # obj.modifiers['subd'].levels = 1
-    # obj.modifiers["subd"].render_levels = 1
+    # Add subsurf modifier
+    obj.modifiers.new("subd", type='SUBSURF')
+    obj.modifiers['subd'].levels = 1
+    obj.modifiers["subd"].render_levels = 1
     #
     # # Add decimate modifier to reduce polys to under 1 million
     # obj.modifiers.new("dec", type='DECIMATE')
