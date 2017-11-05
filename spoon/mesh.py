@@ -45,16 +45,13 @@ CENTER = (0, 0, 0)
 PRECISION = 8
 LENGTH = 140.0
 WIDTH = 50.0
-HEIGHT = 60.0
+HEIGHT = 40.0
 EDGE_RADIUS = 2.0
 THICKNESS = 4.0
 DISPLACEMENT_DEPTH = 2.0
 INSET_WIDTH = 1.0
 
-# TOP_CONTROL_POINTS = [(0, 0.42), (0.1, 0.33), (0.5, 0.3), (0.7, 0.55), (0.82, 0.75), (1.0, 1.0)]
-# WIDTHS = [(0, 0.2), (0.2, 1.0), (0.6, 0.8), (0.9, 0.4), (1.0, 0.3)]
-TOP_CONTROL_POINTS = [(0, 0.42), (0.1, 0.36), (0.5, 0.33), (0.7, 0.55), (0.82, 0.4), (1.0, 0.6)]
-WIDTHS = [(0, 0.2), (0.2, 1.0), (0.6, 0.8), (0.9, 0.5), (1.0, 0.4)]
+WIDTHS = [(0, 0.2), (0.2, 1.0), (0.6, 0.8), (0.9, 0.4), (1.0, 0.3)]
 
 BASE_WIDTH = WIDTH * 0.5
 
@@ -197,37 +194,6 @@ def translatePoint(p, degrees, distance):
     x2 = p[0] + distance * math.cos(radians)
     y2 = p[1] + distance * math.sin(radians)
     return (x2, y2)
-
-def warpLoop(edgeLoop, center, length, height, funcZ, funcZt, scaleZ):
-    xs = [v[0] for v in edgeLoop]
-    ys = [v[1] for v in edgeLoop]
-    zs = [v[2] for v in edgeLoop]
-    minX = min(xs)
-    maxX = max(xs)
-    minY = min(ys)
-    maxY = max(ys)
-    maxZ = max(zs)
-    hl = length * 0.5
-
-    warped = []
-    for i, v in enumerate(edgeLoop):
-        x, y, z = v
-
-        if x > minX and x < maxX:
-            xd = norm(x, center[0]-hl, center[0]+hl)
-            xd = min(xd, 1.0)
-            xd = max(xd, 0.0)
-            xn = norm(x, minX, maxX)
-            xm = 1.0 - abs(xn * 2 - 1.0)
-
-            zn = funcZ(xd) # bottom
-            znt = funcZt(xd) # top
-            znt = lerp(zn, znt, scaleZ)
-            zn = lerp(maxZ / height, znt, xm)
-            z = zn * height - center[2]
-
-        warped.append((x, y, z))
-    return warped
 
 class Mesh:
 
@@ -433,7 +399,6 @@ ys = [d[1] for d in ndata]
 func1 = interpolate.interp1d(xs, ys, kind='linear')
 func3 = interpolate.interp1d(xs, ys, kind='cubic')
 xyears = np.linspace(0, 1, num=(END_YEAR-START_YEAR))
-func3t = interpolate.interp1d([w[0] for w in TOP_CONTROL_POINTS], [w[1] for w in TOP_CONTROL_POINTS], kind='cubic')
 func3y = interpolate.interp1d([w[0] for w in WIDTHS], [w[1] for w in WIDTHS], kind='cubic')
 
 # plot data
@@ -505,7 +470,6 @@ for i, d in enumerate(cupData):
         r2 = width * 0.5
         # move up and out to next layer of the cup
         edgeLoop = ellipse(VERTICES_PER_EDGE_LOOP, center, r1, r2, center[2])
-        edgeLoop = warpLoop(edgeLoop, CENTER, LENGTH, HEIGHT, func3, func3t, 1.0 * i / (len(cupData)-1))
         mesh.addEdgeLoop(edgeLoop)
 
     else:
@@ -524,7 +488,6 @@ for i, d in enumerate(handleData):
     r2 = width * 0.5
     # move up and out to next layer of the cup
     edgeLoop = ellipse(VERTICES_PER_EDGE_LOOP, center, r1, r2, center[2])
-    edgeLoop = warpLoop(edgeLoop, CENTER, LENGTH, HEIGHT, func3, func3t, 1.0)
 
     vPerSide = VERTICES_PER_EDGE_LOOP / 4
     partialLoop = edgeLoop[vPerSide:(vPerSide*2+1)]
