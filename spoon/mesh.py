@@ -9,7 +9,6 @@
 import csv
 import json
 import math
-import matplotlib.pyplot as plt
 import numpy as np
 import os
 from pprint import pprint
@@ -47,7 +46,7 @@ LENGTH = 140.0
 WIDTH = 50.0
 HEIGHT = 40.0
 EDGE_RADIUS = 2.0
-THICKNESS = 4.0
+THICKNESS = 3.0
 DISPLACEMENT_DEPTH = 2.0
 INSET_WIDTH = 3.0
 
@@ -207,7 +206,7 @@ class Mesh:
 
         self.queueLoopAfter = False
 
-    def addEdgeLoop(self, loop, loopBefore=False, loopAfter=False, offset=False, closed=True):
+    def addEdgeLoop(self, loop, loopBefore=False, loopAfter=False, offsetStart=False, offsetEnd=False, closed=True):
         # add an edge loop after the previous one
         if self.queueLoopAfter is not False:
             self.addEdgeLoopHelper(loop, self.queueLoopAfter, True)
@@ -220,7 +219,7 @@ class Mesh:
             self.queueLoopAfter = loopAfter
 
         self.edgeLoops.append(loop)
-        self.offsets.append(offset)
+        self.offsets.append((offsetStart, offsetEnd))
         self.closedLoops.append(closed)
 
     def addEdgeLoops(self, loops):
@@ -248,17 +247,24 @@ class Mesh:
         offsetB = self.offsets[b]
         closedA = self.closedLoops[a]
         closedB = self.closedLoops[b]
+
+        # deal with partial loops
+        if offsetA[0] is not False:
+            loopA = loopA[offsetA[0]:offsetA[1]]
+        if offsetB[0] is not False:
+            loopB = loopB[offsetB[0]:offsetB[1]]
+
         aLen = len(loopA)
         bLen = len(loopB)
 
         # an offset is defined and number of vertices differ
-        if (offsetA is not False or offsetB is not False) and abs(bLen - aLen) > 0:
+        if (offsetA[0] is not False or offsetB[0] is not False) and abs(bLen - aLen) > 0:
 
-            offset = offsetA
+            offset = offsetA[0]
             amtSmaller = aLen
             amtBigger = bLen
             if offset is False:
-                offset = offsetB
+                offset = offsetB[0]
                 amtSmaller = bLen
                 amtBigger = aLen
 
@@ -336,28 +342,121 @@ class Mesh:
         indexOffset = 0
 
         for i, edgeLoop in enumerate(self.edgeLoops):
+            offset = self.offsets[i]
+            loop = edgeLoop
+
+            # this is a partial loop
+            if offset[0] is not False:
+                loop = edgeLoop[offset[0]:offset[1]]
+
             # add loop's vertices
-            self.verts += edgeLoop
+            self.verts += loop
 
             # if this is the first edge loop and it's a quad, add it's face
-            if i == 0 and len(edgeLoop) == 4:
+            if i == 0 and len(loop) == 4:
                 self.faces.append(range(4))
 
             elif i > 0:
+                offsetBefore = self.offsets[i-1]
+                loopBefore = self.edgeLoops[i-1]
+                if offsetBefore[0] is not False:
+                    loopBefore = loopBefore[offsetBefore[0]:offsetBefore[1]]
+
                 self.joinEdgeLoops(i-1, i, indexOffset)
-                indexOffset += len(self.edgeLoops[i-1])
+                indexOffset += len(loopBefore)
 
         # if the last edge loop is a quad, add it's face
         if len(self.edgeLoops[-1]) == 4:
             self.faces.append([(i+indexOffset) for i in range(4)])
 
-    def solidify(self, center, xAmt, yAmt, zAmt):
-        i = len(self.edgeLoops) - 1
-        while i >= 0:
-            loop = self.edgeLoops[i]
-            offset = self.offsets[i]
-            closed = self.closedLoops[i]
-            i -= 1
+    def solidify(self, center, thickness):
+        originalLength = len(self.edgeLoops) - 1
+        index = originalLength
+
+        while index >= 0:
+            loop = self.edgeLoops[index]
+            offset = self.offsets[index]
+            closed = self.closedLoops[index]
+            offsetBefore = (False, False)
+            offsetAfter = (False, False)
+
+            # case: first, add a reference loop before
+            if index >= len(self.edgeLoops) - 1:
+                loopAfter = self.edgeLoops[index-1]
+                deltaZ = loop[0][2] - loopAfter[0][2]
+                loopBefore = [(v[0], v[1], v[2] + deltaZ) for v in loop]
+                offsetAfter = self.edgeLoops[index-1]
+
+            # case: last, add a reference loop after
+            elif index <= 0:
+                loopBefore = self.edgeLoops[index+1]
+                deltaZ = loop[0][2] - loopBefore[0][2]
+                loopAfter = [(v[0], v[1], v[2] + deltaZ) for v in loop]
+                offsetBefore = self.edgeLoops[index+1]
+
+            else:
+                loopBefore = self.edgeLoops[index+1]
+                loopAfter = self.edgeLoops[index-1]
+                offsetBefore = self.edgeLoops[index+1]
+                offsetAfter = self.edgeLoops[index-1]
+
+            # TODO: deal with offsets
+
+            displaced = []
+            for i, p in enumerate(loop):
+                j = i + 1
+                h = i - 1
+                if j >= len(loop):
+                    j = 0
+
+                # case: open loop
+                if not closed:
+                    if j == 0:
+                        j = i
+                    elif i == 0:
+                        h = i
+
+                # points 1, 2, 3 is the triangle to derive normal from
+                p0 = p
+                p1 = loopBefore[h]
+                p2 = loopBefore[j]
+                p3 = loopAfter[i]
+
+                # normalize Z to make z=0 at central point
+                deltaZBefore = p1[2] - p0[2]
+                deltaZAfter = p3[2] - p0[2]
+                p0 = (p0[0], p0[1], 0)
+                p1 = (p1[0], p1[1], deltaZBefore)
+                p2 = (p2[0], p2[1], deltaZBefore)
+                p3 = (p3[0], p3[1], deltaZAfter)
+
+                # calculate normal of triangle made from points above, below, and adjacent
+                # https://stackoverflow.com/questions/19350792/calculate-normal-of-a-single-triangle-in-3d-space
+                p1 = np.array(p1)
+                p2 = np.array(p2)
+                p3 = np.array(p3)
+
+                # we want normals to go towards center
+                u = p2 - p1
+                v = p3 - p1
+
+                # cross product is the normal
+                n = np.cross(u, v)
+
+                # calculate distance bewteen point and normal
+                # https://math.stackexchange.com/questions/105400/linear-interpolation-in-3-dimensions
+                p0 = np.array(p0)
+                p1 = n
+                dist = p1 - p0
+                ndist = np.linalg.norm(dist)
+                pd = p0 + (thickness / ndist) * dist
+                pd = tuple(pd)
+                pd = (pd[0], pd[1], pd[2] + p[2])
+                displaced.append(pd)
+
+            self.addEdgeLoop(displaced, closed=closed)
+
+            index -= 1
 
     def updateEdgeLoops(self, loops, offset0=None, offset1=None):
         if offset0 is None and offset1 is None:
@@ -411,6 +510,7 @@ func3y = interpolate.interp1d([w[0] for w in WIDTHS], [w[1] for w in WIDTHS], ki
 
 # plot data
 if SHOW_GRAPH:
+    import matplotlib.pyplot as plt
     plt.plot(xs, ys, 'o', xyears, func1(xyears), '-', xyears, func3(xyears), '--', xyears, func3t(xyears), '--')
     plt.show()
 
@@ -500,16 +600,9 @@ for i, d in enumerate(handleData):
     # edgeLoop = warpLoop(edgeLoop)
 
     vPerSide = VERTICES_PER_EDGE_LOOP / 4
-    partialLoop = edgeLoop[vPerSide:(vPerSide*2+1)]
+    mesh.addEdgeLoop(edgeLoop, offsetStart=vPerSide, offsetEnd=(vPerSide*2+1), closed=False)
 
-    # offset the first partial loop
-    if i <= 0:
-        mesh.addEdgeLoop(partialLoop, False, False, vPerSide, False)
-    else:
-        mesh.addEdgeLoop(partialLoop, False, False, False, False)
-
-mesh.solidify(CENTER, THICKNESS, THICKNESS, THICKNESS)
-
+# mesh.solidify(CENTER, THICKNESS)
 
 print "Calculating faces..."
 # create faces from edges

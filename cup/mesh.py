@@ -212,8 +212,8 @@ def displaceEdgeLoop(loop, loopBefore, loopAfter, pixelRow, depth, direction="ou
         # calculate normal of triangle made from points above, below, and adjacent
         # https://stackoverflow.com/questions/19350792/calculate-normal-of-a-single-triangle-in-3d-space
         p1 = np.array(p1)
-        p2 = np.array(p1)
-        p3 = np.array(p1)
+        p2 = np.array(p2)
+        p3 = np.array(p3)
 
         # if we want normals to go away from center
         u = p3 - p1
