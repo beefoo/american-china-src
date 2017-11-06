@@ -351,6 +351,14 @@ class Mesh:
         if len(self.edgeLoops[-1]) == 4:
             self.faces.append([(i+indexOffset) for i in range(4)])
 
+    def solidify(self, center, xAmt, yAmt, zAmt):
+        i = len(self.edgeLoops) - 1
+        while i >= 0:
+            loop = self.edgeLoops[i]
+            offset = self.offsets[i]
+            closed = self.closedLoops[i]
+            i -= 1
+
     def updateEdgeLoops(self, loops, offset0=None, offset1=None):
         if offset0 is None and offset1 is None:
             self.edgeLoops = loops[:]
@@ -499,6 +507,8 @@ for i, d in enumerate(handleData):
         mesh.addEdgeLoop(partialLoop, False, False, vPerSide, False)
     else:
         mesh.addEdgeLoop(partialLoop, False, False, False, False)
+
+mesh.solidify(CENTER, THICKNESS, THICKNESS, THICKNESS)
 
 
 print "Calculating faces..."
