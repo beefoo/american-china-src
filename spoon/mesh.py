@@ -260,23 +260,34 @@ class Mesh:
         # an offset is defined and number of vertices differ
         if (offsetA[0] is not False or offsetB[0] is not False) and abs(bLen - aLen) > 0:
 
-            offset = offsetA[0]
-            amtSmaller = aLen
-            amtBigger = bLen
-            if offset is False:
+            # we are going from bigger to smaller
+            if offsetA[0] is False:
                 offset = offsetB[0]
                 amtSmaller = bLen
                 amtBigger = aLen
 
-            for i in range(amtSmaller-1):
-                v1 = i + offset
-                v2 = i + offset + 1
-                v3 = i + 1 + amtBigger
-                v4 = i + amtBigger
-                if v2 >= amtBigger:
-                    v2 = 0
-                    v3 = amtBigger
-                faces.append((v1+indexOffset, v2+indexOffset, v3+indexOffset, v4+indexOffset))
+                for i in range(amtSmaller-1):
+                    v1 = i + offset
+                    v2 = i + offset + 1
+                    v3 = i + 1 + amtBigger
+                    v4 = i + amtBigger
+                    if v2 >= amtBigger:
+                        v2 = 0
+                        v3 = amtBigger
+                    faces.append((v1+indexOffset, v2+indexOffset, v3+indexOffset, v4+indexOffset))
+
+            # we are going from smaller to bigger
+            else:
+                offset = offsetA[0]
+                amtSmaller = aLen
+                amtBigger = bLen
+
+                for i in range(amtSmaller-1):
+                    v1 = i
+                    v2 = i + 1
+                    v3 = i + 1 + amtSmaller + offset
+                    v4 = i + amtSmaller + offset
+                    faces.append((v1+indexOffset, v2+indexOffset, v3+indexOffset, v4+indexOffset))
 
         # number of vertices differ
         elif abs(bLen - aLen) > 0:
@@ -379,30 +390,75 @@ class Mesh:
             closed = self.closedLoops[index]
             offsetBefore = (False, False)
             offsetAfter = (False, False)
+            displaced = []
+
+            if offset[0] is not False:
+                loop = loop[offset[0]:offset[1]]
 
             # case: first, add a reference loop before
             if index >= len(self.edgeLoops) - 1:
                 loopAfter = self.edgeLoops[index-1]
                 deltaZ = loop[0][2] - loopAfter[0][2]
                 loopBefore = [(v[0], v[1], v[2] + deltaZ) for v in loop]
-                offsetAfter = self.edgeLoops[index-1]
+                offsetAfter = self.offsets[index-1]
 
             # case: last, add a reference loop after
             elif index <= 0:
                 loopBefore = self.edgeLoops[index+1]
                 deltaZ = loop[0][2] - loopBefore[0][2]
                 loopAfter = [(v[0], v[1], v[2] + deltaZ) for v in loop]
-                offsetBefore = self.edgeLoops[index+1]
+                offsetBefore = self.offsets[index+1]
 
             else:
                 loopBefore = self.edgeLoops[index+1]
                 loopAfter = self.edgeLoops[index-1]
-                offsetBefore = self.edgeLoops[index+1]
-                offsetAfter = self.edgeLoops[index-1]
+                offsetBefore = self.offsets[index+1]
+                offsetAfter = self.offsets[index-1]
 
-            # TODO: deal with offsets
+            # Deal with partial loops
+            if offsetBefore[0] is not False:
+                loopBefore = loopBefore[offsetBefore[0]:offsetBefore[1]]
+            if offsetAfter[0] is not False:
+                loopAfter = loopAfter[offsetAfter[0]:offsetAfter[1]]
 
-            displaced = []
+            # Check for a flat surface, just point the normal straight up
+            if loopBefore[0][2] == loop[0][2] and loop[0][2] == loopAfter[0][2]:
+                for i, p in enumerate(loop):
+                    dp = (p[0], p[1], p[2]+thickness)
+                    displaced.append(dp)
+                self.addEdgeLoop(displaced, closed=closed)
+                index -= 1
+                continue
+
+            # Deal with loops with different numbers
+            length = len(loop)
+            beforeLen = len(loopBefore)
+            afterLen = len(loopAfter)
+
+            # TODO: fix length change
+            queueBreak = False
+            if length != beforeLen:
+                break
+                queueBreak = True
+
+            # case: loop after bigger, only take partial loop
+            if afterLen > length:
+                loopAfter = loopAfter[offset[0]:offset[1]]
+            # case: loop after smaller, only take the full loop
+            elif afterLen < length:
+                loopAfter = self.edgeLoops[index-1]
+            # case: loop before bigger, only take partial loop
+            if beforeLen > length:
+                loopBefore = loopBefore[offset[0]:offset[1]]
+            # case: loop before smaller, only take the full loop
+            elif beforeLen < length:
+                loopBefore = self.edgeLoops[index+1]
+            beforeLen = len(loopBefore)
+            afterLen = len(loopAfter)
+            if length != beforeLen or length != afterLen:
+                print "Length mismatch at index %s" % index
+
+            # make displaced loop
             for i, p in enumerate(loop):
                 j = i + 1
                 h = i - 1
@@ -455,6 +511,9 @@ class Mesh:
                 displaced.append(pd)
 
             self.addEdgeLoop(displaced, closed=closed)
+
+            if queueBreak:
+                break
 
             index -= 1
 
@@ -602,7 +661,7 @@ for i, d in enumerate(handleData):
     vPerSide = VERTICES_PER_EDGE_LOOP / 4
     mesh.addEdgeLoop(edgeLoop, offsetStart=vPerSide, offsetEnd=(vPerSide*2+1), closed=False)
 
-# mesh.solidify(CENTER, THICKNESS)
+mesh.solidify(CENTER, THICKNESS)
 
 print "Calculating faces..."
 # create faces from edges
