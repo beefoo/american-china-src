@@ -50,7 +50,7 @@ THICKNESS = 3.0
 DISPLACEMENT_DEPTH = 2.0
 INSET_WIDTH = 3.0
 
-WIDTHS = [(0, 0.2), (0.2, 1.0), (0.6, 0.8), (0.9, 0.33), (1.0, 0.25)]
+WIDTHS = [(0, 0.2), (0.2, 1.0), (0.6, 0.8), (0.9, 0.4), (1.0, 0.35)]
 
 BASE_WIDTH = WIDTH * 0.5
 
@@ -632,6 +632,9 @@ mesh.solidify(CENTER, THICKNESS)
 
 # hack: remove the loop before the inner circle mesh to get rid of some weirdness
 removeIndex = len(mesh.edgeLoops)-len(baseInset)-1
+mesh.removeLoop(removeIndex)
+# remove another loop because it's too tight
+removeIndex = len(mesh.edgeLoops)-len(baseInset)-3
 mesh.removeLoop(removeIndex)
 
 print "Calculating faces..."
