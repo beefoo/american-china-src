@@ -258,13 +258,14 @@ class Mesh:
         bLen = len(loopB)
 
         # an offset is defined and number of vertices differ
-        if (offsetA[0] is not False or offsetB[0] is not False) and abs(bLen - aLen) > 0:
+        if (offsetA[0] is not False or offsetB[0] is not False) and aLen != bLen:
 
             # we are going from bigger to smaller
-            if offsetA[0] is False:
+            if aLen > bLen:
                 offset = offsetB[0]
                 amtSmaller = bLen
                 amtBigger = aLen
+                # print "Going from bigger (%s) to smaller (%s)" % (amtBigger, amtSmaller)
 
                 for i in range(amtSmaller-1):
                     v1 = i + offset
@@ -281,6 +282,7 @@ class Mesh:
                 offset = offsetA[0]
                 amtSmaller = aLen
                 amtBigger = bLen
+                # print "Going from smaller (%s) to bigger (%s)" % (amtSmaller, amtBigger)
 
                 for i in range(amtSmaller-1):
                     v1 = i
@@ -290,7 +292,7 @@ class Mesh:
                     faces.append((v1+indexOffset, v2+indexOffset, v3+indexOffset, v4+indexOffset))
 
         # number of vertices differ
-        elif abs(bLen - aLen) > 0:
+        elif aLen != bLen:
 
             # assume we're going from bigger to smaller
             bigger = aLen
@@ -388,45 +390,30 @@ class Mesh:
             loop = self.edgeLoops[index]
             offset = self.offsets[index]
             closed = self.closedLoops[index]
-            offsetBefore = (False, False)
-            offsetAfter = (False, False)
             displaced = []
-
-            if offset[0] is not False:
-                loop = loop[offset[0]:offset[1]]
 
             # case: first, add a reference loop before
             if index >= len(self.edgeLoops) - 1:
                 loopAfter = self.edgeLoops[index-1]
                 deltaZ = loop[0][2] - loopAfter[0][2]
                 loopBefore = [(v[0], v[1], v[2] + deltaZ) for v in loop]
-                offsetAfter = self.offsets[index-1]
 
             # case: last, add a reference loop after
             elif index <= 0:
                 loopBefore = self.edgeLoops[index+1]
                 deltaZ = loop[0][2] - loopBefore[0][2]
                 loopAfter = [(v[0], v[1], v[2] + deltaZ) for v in loop]
-                offsetBefore = self.offsets[index+1]
 
             else:
                 loopBefore = self.edgeLoops[index+1]
                 loopAfter = self.edgeLoops[index-1]
-                offsetBefore = self.offsets[index+1]
-                offsetAfter = self.offsets[index-1]
-
-            # Deal with partial loops
-            if offsetBefore[0] is not False:
-                loopBefore = loopBefore[offsetBefore[0]:offsetBefore[1]]
-            if offsetAfter[0] is not False:
-                loopAfter = loopAfter[offsetAfter[0]:offsetAfter[1]]
 
             # Check for a flat surface, just point the normal straight up
             if loopBefore[0][2] == loop[0][2] and loop[0][2] == loopAfter[0][2]:
                 for i, p in enumerate(loop):
                     dp = (p[0], p[1], p[2]+thickness)
                     displaced.append(dp)
-                self.addEdgeLoop(displaced, closed=closed)
+                self.addEdgeLoop(displaced, offsetStart=offset[0], offsetEnd=offset[1], closed=closed)
                 index -= 1
                 continue
 
@@ -434,29 +421,9 @@ class Mesh:
             length = len(loop)
             beforeLen = len(loopBefore)
             afterLen = len(loopAfter)
-
-            # TODO: fix length change
-            queueBreak = False
-            if length != beforeLen:
-                break
-                queueBreak = True
-
-            # case: loop after bigger, only take partial loop
-            if afterLen > length:
-                loopAfter = loopAfter[offset[0]:offset[1]]
-            # case: loop after smaller, only take the full loop
-            elif afterLen < length:
-                loopAfter = self.edgeLoops[index-1]
-            # case: loop before bigger, only take partial loop
-            if beforeLen > length:
-                loopBefore = loopBefore[offset[0]:offset[1]]
-            # case: loop before smaller, only take the full loop
-            elif beforeLen < length:
-                loopBefore = self.edgeLoops[index+1]
-            beforeLen = len(loopBefore)
-            afterLen = len(loopAfter)
             if length != beforeLen or length != afterLen:
-                print "Length mismatch at index %s" % index
+                print "Abort: length mismatch at %s!" % index
+                break
 
             # make displaced loop
             for i, p in enumerate(loop):
@@ -464,13 +431,6 @@ class Mesh:
                 h = i - 1
                 if j >= len(loop):
                     j = 0
-
-                # case: open loop
-                if not closed:
-                    if j == 0:
-                        j = i
-                    elif i == 0:
-                        h = i
 
                 # points 1, 2, 3 is the triangle to derive normal from
                 p0 = p
@@ -510,10 +470,7 @@ class Mesh:
                 pd = (pd[0], pd[1], pd[2] + p[2])
                 displaced.append(pd)
 
-            self.addEdgeLoop(displaced, closed=closed)
-
-            if queueBreak:
-                break
+            self.addEdgeLoop(displaced, offsetStart=offset[0], offsetEnd=offset[1], closed=closed)
 
             index -= 1
 
