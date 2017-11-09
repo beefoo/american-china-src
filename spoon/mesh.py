@@ -390,10 +390,17 @@ class Mesh:
             loop = self.edgeLoops[index]
             offset = self.offsets[index]
             closed = self.closedLoops[index]
+            closedBefore = True
+            closedAfter = True
             displaced = []
 
-            # case: first, add a reference loop before
-            if index >= len(self.edgeLoops) - 1:
+            if index < len(self.edgeLoops) - 1:
+                closedBefore = self.closedLoops[index+1]
+            if index > 0:
+                closedAfter = self.closedLoops[index-1]
+
+            # case: first, or going from open to closed, add a reference loop before
+            if index >= len(self.edgeLoops) - 1 or (not closedBefore and closed):
                 loopAfter = self.edgeLoops[index-1]
                 deltaZ = loop[0][2] - loopAfter[0][2]
                 loopBefore = [(v[0], v[1], v[2] + deltaZ) for v in loop]
