@@ -46,11 +46,11 @@ LENGTH = 140.0
 WIDTH = 50.0
 HEIGHT = 40.0
 EDGE_RADIUS = 2.0
-THICKNESS = 3.0
+THICKNESS = 4.8
 DISPLACEMENT_DEPTH = 2.0
 INSET_WIDTH = 3.0
 
-WIDTHS = [(0, 0.2), (0.2, 1.0), (0.6, 0.8), (0.9, 0.4), (1.0, 0.35)]
+WIDTHS = [(0, 0.2), (0.2, 1.0), (0.6, 0.8), (0.9, 0.44), (1.0, 0.44)]
 
 BASE_WIDTH = WIDTH * 0.5
 
@@ -687,6 +687,8 @@ removeIndex = len(mesh.edgeLoops)-len(baseInset)-1
 mesh.removeLoop(removeIndex)
 # remove another loop because it's too tight
 removeIndex = len(mesh.edgeLoops)-len(baseInset)-3
+mesh.removeLoop(removeIndex)
+removeIndex = len(mesh.edgeLoops)-len(baseInset)-1
 mesh.removeLoop(removeIndex)
 
 print "Calculating faces..."
