@@ -204,20 +204,7 @@ class Mesh:
         self.offsets = []
         self.closedLoops = []
 
-        self.queueLoopAfter = False
-
-    def addEdgeLoop(self, loop, loopBefore=False, loopAfter=False, offsetStart=False, offsetEnd=False, closed=True):
-        # add an edge loop after the previous one
-        if self.queueLoopAfter is not False:
-            self.addEdgeLoopHelper(loop, self.queueLoopAfter, True)
-            self.queueLoopAfter = False
-        # add an edge loop before the next one
-        if loopBefore is not False:
-            self.addEdgeLoopHelper(loop, loopBefore, False)
-        # add an edge loop after the next one
-        if loopAfter is not False:
-            self.queueLoopAfter = loopAfter
-
+    def addEdgeLoop(self, loop, offsetStart=False, offsetEnd=False, closed=True):
         self.edgeLoops.append(loop)
         self.offsets.append((offsetStart, offsetEnd))
         self.closedLoops.append(closed)
@@ -226,18 +213,83 @@ class Mesh:
         for loop in loops:
             self.addEdgeLoop(loop)
 
-    def addEdgeLoopHelper(self, nextLoop, amount, after=True):
-        prevLoop = self.edgeLoops[-1]
-        d = distance(prevLoop[0], nextLoop[0])
-        lerpAmount = amount / d
-        if lerpAmount >= 0.5:
-            print "Edge loop %s helper too close to neighbor loop" % len(self.edgeLoops)
-            return False
-        if not after:
-            lerpAmount = 1.0 - lerpAmount
-        loop = lerpEdge(prevLoop, nextLoop, lerpAmount)
-        self.edgeLoops.append(loop)
-        self.offsets.append(0)
+    def closeOpenLoops(self):
+
+        # find the first open loop
+        loopOffset = 0
+        vertOffset = 0
+        openLoops = []
+        for i, loop in enumerate(self.edgeLoops):
+            closed = self.closedLoops[i]
+            if not closed:
+                openLoops.append(loop)
+            elif len(openLoops) <= 0:
+                loopOffset += 1
+                vertOffset += len(loop)
+
+        # connect each of the loops on the handle
+        faces = []
+        openLoopCount = len(openLoops)
+        half = openLoopCount / 2 - 1
+        i = half - 1
+        offset = self.offsets[loopOffset]
+        partialLoopLen = offset[1] - offset[0]
+        while i >= 0:
+            j = i + (half-i) * 2 + 1
+            a = i
+            b = i + 1
+            c = j - 1
+            d = j
+
+            loopA = openLoops[a][offset[0]:offset[1]]
+            loopB = openLoops[b][offset[0]:offset[1]]
+            loopC = openLoops[c][offset[0]:offset[1]]
+            loopD = openLoops[d][offset[0]:offset[1]]
+
+            aVertOffset = a * partialLoopLen + vertOffset
+            bVertOffset = b * partialLoopLen + vertOffset
+            cVertOffset = c * partialLoopLen + vertOffset
+            dVertOffset = d * partialLoopLen + vertOffset
+
+            # connect on the north side
+            faces.append((aVertOffset, bVertOffset, cVertOffset, dVertOffset))
+            # connect on the south side
+            faces.append((dVertOffset+partialLoopLen-1, cVertOffset+partialLoopLen-1, bVertOffset+partialLoopLen-1, aVertOffset+partialLoopLen-1))
+            i -= 1
+
+        # connect the closed loops right before and after the open loops
+        a = loopOffset - 1
+        b = loopOffset + openLoopCount
+        loopA = self.edgeLoops[a]
+        loopB = self.edgeLoops[b]
+        aVertOffset = vertOffset - len(loopA)
+        bVertOffset = vertOffset + openLoopCount * partialLoopLen
+        loopLen = len(loopA)
+        for i in range(loopLen):
+            # skip the ones already connect
+            if offset[0] <= i < offset[1]-1:
+                continue
+            v1 = i
+            v2 = i + 1
+            v3 = i + 1
+            v4 = i
+            if v2 >= loopLen:
+                v2 = 0
+                v3 = 0
+            faces.append((v1+aVertOffset, v2+aVertOffset, v3+bVertOffset, v4+bVertOffset))
+
+        # finally connect the last open loop with the first closed loop
+        aVertOffset = aVertOffset + offset[0]
+        bVertOffset = bVertOffset + offset[0]
+        cVertOffset = vertOffset + (openLoopCount - 1) * partialLoopLen
+        dVertOffset = vertOffset
+        # south side
+        faces.append((dVertOffset, cVertOffset, bVertOffset, aVertOffset))
+        # north side
+        faces.append((aVertOffset+partialLoopLen-1, bVertOffset+partialLoopLen-1, cVertOffset+partialLoopLen-1, dVertOffset+partialLoopLen-1))
+
+        self.faces += faces
+        return faces
 
     def joinEdgeLoops(self, a, b, indexOffset):
         faces = []
@@ -641,6 +693,14 @@ print "Calculating faces..."
 # create faces from edges
 mesh.processEdgeloops()
 
+print "Closing open loops..."
+facesAdded = mesh.closeOpenLoops()
+
+# Flip the faces of the first circle mesh
+flipFaces = range((VERTICES_PER_EDGE_LOOP/4)**2)
+
+# TODO: flip the faces of the north side of the closed open loops
+
 # save data
 data = [
     {
@@ -649,7 +709,7 @@ data = [
         "edges": [],
         "faces": mesh.faces,
         "location": CENTER,
-        "flipFaces": range((VERTICES_PER_EDGE_LOOP/4)**2)
+        "flipFaces": flipFaces
     }
 ]
 
