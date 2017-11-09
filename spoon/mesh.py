@@ -382,6 +382,9 @@ class Mesh:
         if len(self.edgeLoops[-1]) == 4:
             self.faces.append([(i+indexOffset) for i in range(4)])
 
+    def removeLoop(self, index):
+        removed = self.edgeLoops.pop(index)
+
     def solidify(self, center, thickness):
         originalLength = len(self.edgeLoops) - 1
         index = originalLength
@@ -626,6 +629,10 @@ for i, d in enumerate(handleData):
     mesh.addEdgeLoop(edgeLoop, offsetStart=vPerSide, offsetEnd=(vPerSide*2+1), closed=False)
 
 mesh.solidify(CENTER, THICKNESS)
+
+# hack: remove the loop before the inner circle mesh to get rid of some weirdness
+removeIndex = len(mesh.edgeLoops)-len(baseInset)-1
+mesh.removeLoop(removeIndex)
 
 print "Calculating faces..."
 # create faces from edges
