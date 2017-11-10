@@ -6,3 +6,4 @@ _Under development. Coming early 2018._ A porcelain dining set inspired by peopl
 
 1. [Cup](cup/)
 1. [Spoon](spoon/)
+1. [Bowl](bowl/)
