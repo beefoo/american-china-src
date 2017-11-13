@@ -30,6 +30,7 @@ BASE_WIDTH = 55.0
 BASE_HEIGHT = 9.0
 EDGE_RADIUS = 4.0
 THICKNESS = 4.6
+MAX_WAVE = 3.0
 
 # calculations
 INSET_BASE_WIDTH = BASE_WIDTH * 0.5
@@ -39,22 +40,25 @@ BODY_HEIGHT = (HEIGHT - BASE_HEIGHT) * 0.1 + BASE_HEIGHT
 BODY_WIDTH = WIDTH * 0.8
 
 BOWL = [
-    [INSET_BASE_WIDTH - EDGE_RADIUS*2, INSET_BASE_HEIGHT],      # start with base inset edge
-    [INSET_BASE_WIDTH, INSET_BASE_HEIGHT],                      # move out to base inset
-    [INNER_BASE_WIDTH, 0],                                      # move down and out to inner base
-    [BASE_WIDTH, 0],                                            # move out to outer base
-    [BASE_WIDTH, EDGE_RADIUS],                                  # move up to outer base edge
-    [BASE_WIDTH, BASE_HEIGHT],                                  # move up to base top
-    [BODY_WIDTH, BODY_HEIGHT],                                  # move up and out to body
-    [WIDTH, HEIGHT - EDGE_RADIUS],                              # move up and out to outer top edge
-    [WIDTH, HEIGHT],                                            # move up to outer top
-    [WIDTH-THICKNESS*2, HEIGHT],                                # move in to inner top
-    # [WIDTH-THICKNESS*2, HEIGHT - EDGE_RADIUS],                  # move down to inner top edge
-    [BODY_WIDTH-THICKNESS*2, BODY_HEIGHT],                      # move down and in to inner body
-    [INSET_BASE_WIDTH, BASE_HEIGHT+THICKNESS],                  # move down and in to inner base
-    [INSET_BASE_WIDTH - EDGE_RADIUS*2, BASE_HEIGHT+THICKNESS]   # move in to inner base edge
+    [INSET_BASE_WIDTH - EDGE_RADIUS*2, INSET_BASE_HEIGHT],      # 0, start with base inset edge
+    [INSET_BASE_WIDTH, INSET_BASE_HEIGHT],                      # 1, move out to base inset
+    [INNER_BASE_WIDTH, 0],                                      # 2, move down and out to inner base
+    [BASE_WIDTH, 0],                                            # 3, move out to outer base
+    [BASE_WIDTH, EDGE_RADIUS],                                  # 4, move up to outer base edge
+    [BASE_WIDTH, BASE_HEIGHT],                                  # 5, move up to base top
+    [BODY_WIDTH, BODY_HEIGHT],                                  # 6, move up and out to body
+    [WIDTH, HEIGHT - EDGE_RADIUS],                              # 7, move up and out to outer top edge
+    [WIDTH, HEIGHT],                                            # 8, move up to outer top
+    [WIDTH-THICKNESS*2, HEIGHT],                                # 9, move in to inner top
+    [BODY_WIDTH-THICKNESS*2, BODY_HEIGHT],                      # 10, move down and in to inner body
+    [INSET_BASE_WIDTH, BASE_HEIGHT+THICKNESS],                  # 11, move down and in to inner base
+    [INSET_BASE_WIDTH - EDGE_RADIUS*2, BASE_HEIGHT+THICKNESS]   # 12, move in to inner base edge
 ]
 bowlLen = len(BOWL)
+outerStart = 5
+outerEnd = 8
+innerStart = 9
+innerEnd = 11
 
 def bspline(cv, n=100, degree=3, periodic=True):
     """ Calculate n samples on a bspline
@@ -198,6 +202,9 @@ def ellipseMesh(vertices, center, r1, r2, z, reverse=False):
 def lerp(a, b, mu):
     return (b-a) * mu + a
 
+def norm(value, a, b):
+    return 1.0 * (value - a) / (b - a)
+
 def roundP(vList, precision):
     rounded = []
     for v in vList:
@@ -303,25 +310,50 @@ class Mesh:
             self.faces.append([(i+indexOffset) for i in range(4)])
 
 # read data
+print "Interpolating data..."
 data = []
+targetEdgeCount = bowlLen * 2**SUBDIVIDE_Y
 with open(DATA_FILE) as f:
     data = json.load(f)
+data = [tuple(d) for d in data]
+splinedData = bspline(data, n=targetEdgeCount, degree=3, periodic=False)
 
 # interpolate bowl data
 widths = [d[0] for d in BOWL]
 heights = [d[1] for d in BOWL]
 xs = [1.0 * i / (bowlLen-1)  for i, d in enumerate(BOWL)]
-targetEdgeCount = bowlLen * 2**SUBDIVIDE_Y
 splinedWidths = bspline(list(zip(xs, widths)), n=targetEdgeCount, degree=3, periodic=False)
 splinedHeights = bspline(list(zip(xs, heights)), n=targetEdgeCount, degree=3, periodic=False)
 
 # build the mesh
 mesh = Mesh()
 
+outerStart = int(round(1.0 * outerStart / bowlLen * targetEdgeCount))
+outerEnd = int(round(1.0 * outerEnd / bowlLen * targetEdgeCount))
+innerStart = int(round(1.0 * innerStart / bowlLen * targetEdgeCount))
+innerEnd = int(round(1.0 * innerEnd / bowlLen * targetEdgeCount))
+
 for i in range(targetEdgeCount):
     width = splinedWidths[i][1]
-    r = width * 0.5
     z = splinedHeights[i][1]
+    delta = 0
+    r = width * 0.5 + delta
+    p = -1
+    outer = True
+
+    if outerStart <= i <= outerEnd:
+        p = norm(i, outerStart, outerEnd) * 0.5
+
+    elif innerStart <= i <= innerEnd:
+        outer = False
+        p = norm(i, innerStart, innerEnd) * 0.5 + 0.5
+
+    if p >= 0:
+        j = int(round(p * (targetEdgeCount-1)))
+        delta = splinedData[j][1] * MAX_WAVE
+
+        # TODO: get the normal of the edge and offset it with delta
+
     if i <= 0:
         loops = ellipseMesh(VERTICES_PER_EDGE_LOOP, CENTER, r, r, z)
         mesh.addEdgeLoops(loops)
