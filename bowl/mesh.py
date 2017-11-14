@@ -15,11 +15,17 @@ import sys
 OUTPUT_FILE = "mesh.json"
 DATA_FILE = "data/gotNS.json"
 
+# data config
+DATA_WINDOW_SIZE = 0.04
+
 BASE_VERTICES = 16 # don't change this as it will break rounded rectangles
-SUBDIVIDE_Y = 3 # will subdivide base vertices B * 2^x
+SUBDIVIDE_Y = 5 # will subdivide base vertices B * 2^x
 SUBDIVIDE_X = 3
 VERTICES_PER_EDGE_LOOP = BASE_VERTICES * 2**SUBDIVIDE_X
 print "%s vertices per edge loop" % VERTICES_PER_EDGE_LOOP
+
+# helpers
+SHOW_GRAPH = False
 
 # cup config in mm
 CENTER = (0, 0, 0)
@@ -29,8 +35,8 @@ HEIGHT = 50.0
 BASE_WIDTH = 55.0
 BASE_HEIGHT = 9.0
 EDGE_RADIUS = 4.0
-THICKNESS = 4.6
-MAX_WAVE = 3.0
+THICKNESS = 3.6
+MAX_WAVE = 6.0
 
 # calculations
 INSET_BASE_WIDTH = BASE_WIDTH * 0.5
@@ -56,9 +62,13 @@ BOWL = [
 ]
 bowlLen = len(BOWL)
 outerStart = 5
-outerEnd = 8
-innerStart = 9
-innerEnd = 11
+outerEnd = 9
+
+def angleBetweenPoints(p1, p2):
+    deltaX = p2[0] - p1[0]
+    deltaY = p2[1] - p1[1]
+    rad = math.atan2(deltaY, deltaX)
+    return math.degrees(rad)
 
 def bspline(cv, n=100, degree=3, periodic=True):
     """ Calculate n samples on a bspline
@@ -212,6 +222,35 @@ def roundP(vList, precision):
         rounded.append(t)
     return rounded
 
+def savitzkyGolay(y, window_size, order=3, deriv=0, rate=1):
+    try:
+        window_size = np.abs(np.int(window_size))
+        order = np.abs(np.int(order))
+    except ValueError, msg:
+        raise ValueError("window_size and order have to be of type int")
+    if window_size % 2 != 1 or window_size < 1:
+        raise TypeError("window_size size must be a positive odd number")
+    if window_size < order + 2:
+        raise TypeError("window_size is too small for the polynomials order")
+    y = np.array(y)
+    order_range = range(order+1)
+    half_window = (window_size -1) // 2
+    # precompute coefficients
+    b = np.mat([[k**i for i in order_range] for k in range(-half_window, half_window+1)])
+    m = np.linalg.pinv(b).A[deriv] * rate**deriv * math.factorial(deriv)
+    # pad the signal at the extremes with
+    # values taken from the signal itself
+    firstvals = y[0] - np.abs( y[1:half_window+1][::-1] - y[0] )
+    lastvals = y[-1] + np.abs(y[-half_window-1:-1][::-1] - y[-1])
+    y = np.concatenate((firstvals, y, lastvals))
+    return np.convolve( m[::-1], y, mode='valid')
+
+def translatePoint(p, degrees, distance):
+    radians = math.radians(degrees)
+    x2 = p[0] + distance * math.cos(radians)
+    y2 = p[1] + distance * math.sin(radians)
+    return (x2, y2)
+
 class Mesh:
 
     def __init__(self):
@@ -313,10 +352,35 @@ class Mesh:
 print "Interpolating data..."
 data = []
 targetEdgeCount = bowlLen * 2**SUBDIVIDE_Y
+targetDataCount = targetEdgeCount * 4
 with open(DATA_FILE) as f:
     data = json.load(f)
 data = [tuple(d) for d in data]
-splinedData = bspline(data, n=targetEdgeCount, degree=3, periodic=False)
+# pad data
+data = [(0, 0.5)] + data + [(1, 0.5)]
+# break the data into inner and outer
+outerData = [(d[0], (max(d[1], 0.5)-0.5) * 2) for d in data] # get everything over 0.5
+# interpolate data
+splinedOuterData = bspline(outerData, n=targetDataCount, degree=3, periodic=False)
+# get trend data
+windowSize = int(round(DATA_WINDOW_SIZE * targetDataCount))
+if windowSize % 2 == 0:
+    windowSize += 1
+print "Data len: %s" % targetDataCount
+print "Window size: %s" % windowSize
+xst = [d[0] for d in splinedOuterData]
+yst = savitzkyGolay([d[1] for d in splinedOuterData], window_size=windowSize)
+trendOuterData = list(zip(xst, yst))
+
+if SHOW_GRAPH:
+    import matplotlib.pyplot as plt
+    xs = [d[0] for d in splinedOuterData]
+    ys = [d[1] for d in splinedOuterData]
+    xst = [d[0] for d in trendOuterData]
+    yst = [d[1] for d in trendOuterData]
+    plt.plot(xs, ys, '-', xst, yst, '-')
+    plt.show()
+    sys.exit(1)
 
 # interpolate bowl data
 widths = [d[0] for d in BOWL]
@@ -328,31 +392,45 @@ splinedHeights = bspline(list(zip(xs, heights)), n=targetEdgeCount, degree=3, pe
 # build the mesh
 mesh = Mesh()
 
-outerStart = int(round(1.0 * outerStart / bowlLen * targetEdgeCount))
-outerEnd = int(round(1.0 * outerEnd / bowlLen * targetEdgeCount))
-innerStart = int(round(1.0 * innerStart / bowlLen * targetEdgeCount))
-innerEnd = int(round(1.0 * innerEnd / bowlLen * targetEdgeCount))
-
+# get spline data
+loopData = []
 for i in range(targetEdgeCount):
     width = splinedWidths[i][1]
     z = splinedHeights[i][1]
-    delta = 0
-    r = width * 0.5 + delta
-    p = -1
-    outer = True
+    r = width * 0.5
+    loopData.append((r, z))
+
+# determine indices for inner/outer walls, cut off ends for normal calculations
+outerStart = int(round(1.0 * outerStart / bowlLen * targetEdgeCount)) + 1
+outerEnd = int(round(1.0 * outerEnd * 0.95 / bowlLen * targetEdgeCount)) - 1
+
+for i, d in enumerate(loopData):
+    r = d[0]
+    z = d[1]
 
     if outerStart <= i <= outerEnd:
-        p = norm(i, outerStart, outerEnd) * 0.5
+        p = norm(i, outerStart, outerEnd)
+        j = int(round(p * (targetDataCount-1)))
+        delta = trendOuterData[j][1] * MAX_WAVE
 
-    elif innerStart <= i <= innerEnd:
-        outer = False
-        p = norm(i, innerStart, innerEnd) * 0.5 + 0.5
+        # get the point before and after
+        before = loopData[i-1]
+        after = loopData[i+1]
 
-    if p >= 0:
-        j = int(round(p * (targetEdgeCount-1)))
-        delta = splinedData[j][1] * MAX_WAVE
+        p0 = (before[0], before[1])
+        p1 = (r, z)
+        p2 = (after[0], after[1])
 
-        # TODO: get the normal of the edge and offset it with delta
+        # determine the normal
+        angle = angleBetweenPoints(p0, p2)
+        normal = angle + 90
+        pn = translatePoint(p1, normal, delta)
+
+        # update the radius and z
+        rDelta = pn[0] - r
+        zDelta = pn[1] - z
+        r += rDelta
+        z += zDelta
 
     if i <= 0:
         loops = ellipseMesh(VERTICES_PER_EDGE_LOOP, CENTER, r, r, z)
