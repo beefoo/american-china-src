@@ -13,7 +13,7 @@ import sys
 
 # data config
 OUTPUT_FILE = "mesh.json"
-DATA_FILE = "data/gotNS_part.json"
+DATA_FILE = "data/gotNS_part2.json"
 
 # data config
 DATA_WINDOW_SIZE = 0.04
@@ -36,7 +36,7 @@ BASE_WIDTH = 55.0
 BASE_HEIGHT = 9.0
 EDGE_RADIUS = 4.0
 THICKNESS = 3.6
-MAX_WAVE = 6.0
+MAX_WAVE = 4.0
 
 # calculations
 INSET_BASE_WIDTH = BASE_WIDTH * 0.5
@@ -62,7 +62,7 @@ BOWL = [
 ]
 bowlLen = len(BOWL)
 DISPLACE_START = 5
-DISPLACE_END = 9
+DISPLACE_END = 9 * 0.95
 
 targetEdgeCount = bowlLen * 2**SUBDIVIDE_Y
 targetDataCount = targetEdgeCount * 4
@@ -375,6 +375,14 @@ maxY = max(ys)
 data = [(d[0], norm(d[1], minY, maxY)-0.5) for d in data]
 # choose which data we should use for displacement
 displaceData = data
+
+# make widths correlate to absolute heights
+ys = [abs(d[1]) for d in displaceData]
+ysum = sum(ys)
+x = 0
+for i, d in enumerate(displaceData):
+    displaceData[i] = (x, d[1])
+    x += 1.0 * abs(d[1]) / ysum
 
 if SHOW_GRAPH:
     import matplotlib.pyplot as plt
