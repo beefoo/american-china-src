@@ -13,14 +13,14 @@ import sys
 
 # data config
 OUTPUT_FILE = "mesh.json"
-DATA_FILE = "data/gotNS.json"
+DATA_FILE = "data/gotNS_part.json"
 
 # data config
 DATA_WINDOW_SIZE = 0.04
 
 BASE_VERTICES = 16 # don't change this as it will break rounded rectangles
-SUBDIVIDE_Y = 5 # will subdivide base vertices B * 2^x
-SUBDIVIDE_X = 3
+SUBDIVIDE_Y = 2 # will subdivide base vertices B * 2^x
+SUBDIVIDE_X = 2
 VERTICES_PER_EDGE_LOOP = BASE_VERTICES * 2**SUBDIVIDE_X
 print "%s vertices per edge loop" % VERTICES_PER_EDGE_LOOP
 
@@ -61,8 +61,12 @@ BOWL = [
     [INSET_BASE_WIDTH - EDGE_RADIUS*2, BASE_HEIGHT+THICKNESS]   # 12, move in to inner base edge
 ]
 bowlLen = len(BOWL)
-outerStart = 5
-outerEnd = 9
+DISPLACE_START = 5
+DISPLACE_END = 9
+
+targetEdgeCount = bowlLen * 2**SUBDIVIDE_Y
+targetDataCount = targetEdgeCount * 4
+highresEdgeCount = 1000
 
 def angleBetweenPoints(p1, p2):
     deltaX = p2[0] - p1[0]
@@ -349,36 +353,34 @@ class Mesh:
             self.faces.append([(i+indexOffset) for i in range(4)])
 
 # read data
-print "Interpolating data..."
+print "Processing data..."
 data = []
-targetEdgeCount = bowlLen * 2**SUBDIVIDE_Y
-targetDataCount = targetEdgeCount * 4
 with open(DATA_FILE) as f:
     data = json.load(f)
 data = [tuple(d) for d in data]
 # pad data
+minY = min([d[1] for d in data])
 data = [(0, 0.5)] + data + [(1, 0.5)]
-# break the data into inner and outer
-outerData = [(d[0], (max(d[1], 0.5)-0.5) * 2) for d in data] # get everything over 0.5
 # interpolate data
-splinedOuterData = bspline(outerData, n=targetDataCount, degree=3, periodic=False)
-# get trend data
-windowSize = int(round(DATA_WINDOW_SIZE * targetDataCount))
-if windowSize % 2 == 0:
-    windowSize += 1
-print "Data len: %s" % targetDataCount
-print "Window size: %s" % windowSize
-xst = [d[0] for d in splinedOuterData]
-yst = savitzkyGolay([d[1] for d in splinedOuterData], window_size=windowSize)
-trendOuterData = list(zip(xst, yst))
+splinedData = bspline(data, n=targetDataCount, degree=3, periodic=False)
+# normalize splined data
+ys = [d[1] for d in splinedData]
+minY = min(ys)
+maxY = max(ys)
+splinedData = [(d[0], norm(d[1], minY, maxY)-0.5) for d in splinedData]
+# normalize raw data
+ys = [d[1] for d in data]
+minY = min(ys)
+maxY = max(ys)
+data = [(d[0], norm(d[1], minY, maxY)-0.5) for d in data]
+# choose which data we should use for displacement
+displaceData = data
 
 if SHOW_GRAPH:
     import matplotlib.pyplot as plt
-    xs = [d[0] for d in splinedOuterData]
-    ys = [d[1] for d in splinedOuterData]
-    xst = [d[0] for d in trendOuterData]
-    yst = [d[1] for d in trendOuterData]
-    plt.plot(xs, ys, '-', xst, yst, '-')
+    xs = [d[0] for d in displaceData]
+    ys = [d[1] for d in displaceData]
+    plt.plot(xs, ys, '-')
     plt.show()
     sys.exit(1)
 
@@ -388,6 +390,8 @@ heights = [d[1] for d in BOWL]
 xs = [1.0 * i / (bowlLen-1)  for i, d in enumerate(BOWL)]
 splinedWidths = bspline(list(zip(xs, widths)), n=targetEdgeCount, degree=3, periodic=False)
 splinedHeights = bspline(list(zip(xs, heights)), n=targetEdgeCount, degree=3, periodic=False)
+splinedWidthsHighres = bspline(list(zip(xs, widths)), n=1000, degree=3, periodic=False)
+splinedHeightsHighres = bspline(list(zip(xs, heights)), n=1000, degree=3, periodic=False)
 
 # build the mesh
 mesh = Mesh()
@@ -399,23 +403,48 @@ for i in range(targetEdgeCount):
     z = splinedHeights[i][1]
     r = width * 0.5
     loopData.append((r, z))
+loopDataHighres = []
+for i in range(highresEdgeCount):
+    width = splinedWidthsHighres[i][1]
+    z = splinedHeightsHighres[i][1]
+    r = width * 0.5
+    loopDataHighres.append((r, z))
 
-# determine indices for inner/outer walls, cut off ends for normal calculations
-outerStart = int(round(1.0 * outerStart / bowlLen * targetEdgeCount)) + 1
-outerEnd = int(round(1.0 * outerEnd * 0.95 / bowlLen * targetEdgeCount)) - 1
+# determine indices for displaced walls walls, cut off ends for normal calculations
+displaceStart = int(round(1.0 * DISPLACE_START / bowlLen * targetEdgeCount))
+displaceEnd = int(round(1.0 * DISPLACE_END / bowlLen * targetEdgeCount))
+displaceStartHighres = int(round(1.0 * DISPLACE_START / bowlLen * highresEdgeCount))
+displaceEndHighres = int(round(1.0 * DISPLACE_END / bowlLen * highresEdgeCount))
 
+# add the loops before the displacement
 for i, d in enumerate(loopData):
+    if i >= displaceStart:
+        break
     r = d[0]
     z = d[1]
+    if i <= 0:
+        loops = ellipseMesh(VERTICES_PER_EDGE_LOOP, CENTER, r, r, z)
+        mesh.addEdgeLoops(loops)
+    else:
+        loop = ellipse(VERTICES_PER_EDGE_LOOP, CENTER, r, r, z)
+        mesh.addEdgeLoop(loop)
 
-    if outerStart <= i <= outerEnd:
-        p = norm(i, outerStart, outerEnd)
-        j = int(round(p * (targetDataCount-1)))
-        delta = trendOuterData[j][1] * MAX_WAVE
+# add displacement
+displaceLoopData = loopDataHighres[displaceStartHighres:displaceEndHighres]
+dLen = len(displaceLoopData)
+for i, d in enumerate(displaceData):
+    px = d[0]
+    delta = d[1] * MAX_WAVE
+    j = int(round(px * (dLen-1)))
+    dd = displaceLoopData[j]
+    r = dd[0]
+    z = dd[1]
+
+    if j > 0 and j < dLen-1:
 
         # get the point before and after
-        before = loopData[i-1]
-        after = loopData[i+1]
+        before = displaceLoopData[j-1]
+        after = displaceLoopData[j+1]
 
         p0 = (before[0], before[1])
         p1 = (r, z)
@@ -432,15 +461,20 @@ for i, d in enumerate(loopData):
         r += rDelta
         z += zDelta
 
-    if i <= 0:
-        loops = ellipseMesh(VERTICES_PER_EDGE_LOOP, CENTER, r, r, z)
-        mesh.addEdgeLoops(loops)
-    elif i >= targetEdgeCount-1:
-        loops = ellipseMesh(VERTICES_PER_EDGE_LOOP, CENTER, r, r, z, reverse=True)
-        mesh.addEdgeLoops(loops)
-    else:
         loop = ellipse(VERTICES_PER_EDGE_LOOP, CENTER, r, r, z)
         mesh.addEdgeLoop(loop)
+
+# add loops after displacement
+for i, d in enumerate(loopData):
+    if i >= displaceEnd:
+        r = d[0]
+        z = d[1]
+        if i >= targetEdgeCount-1:
+            loops = ellipseMesh(VERTICES_PER_EDGE_LOOP, CENTER, r, r, z, reverse=True)
+            mesh.addEdgeLoops(loops)
+        else:
+            loop = ellipse(VERTICES_PER_EDGE_LOOP, CENTER, r, r, z)
+            mesh.addEdgeLoop(loop)
 
 print "Calculating faces..."
 # generate faces from vertices
