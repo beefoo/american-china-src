@@ -31,12 +31,12 @@ SHOW_GRAPH = False
 CENTER = (0, 0, 0)
 PRECISION = 8
 WIDTH = 115.0
-HEIGHT = 50.0
+HEIGHT = 55.0
 BASE_WIDTH = 55.0
 BASE_HEIGHT = 9.0
 EDGE_RADIUS = 4.0
-THICKNESS = 3.6
-MAX_WAVE = 4.0
+THICKNESS = 5.0
+MAX_WAVE = 6.4
 
 # calculations
 INSET_BASE_WIDTH = BASE_WIDTH * 0.5
@@ -381,8 +381,18 @@ ys = [abs(d[1]) for d in displaceData]
 ysum = sum(ys)
 x = 0
 for i, d in enumerate(displaceData):
-    displaceData[i] = (x, d[1])
-    x += 1.0 * abs(d[1]) / ysum
+    w = 1.0 * abs(d[1]) / ysum
+    displaceData[i] = (x + w * 0.5, d[1])
+    x += w
+
+# made the data quadratic
+for i, d in enumerate(displaceData):
+    y = d[1] * 2
+    ay = abs(y)
+    y2 = ay**2
+    direction = y / ay
+    y = y2 * direction * 0.5
+    displaceData[i] = (d[0], y)
 
 if SHOW_GRAPH:
     import matplotlib.pyplot as plt
