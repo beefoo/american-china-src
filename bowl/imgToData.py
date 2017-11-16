@@ -2,6 +2,10 @@
 
 # python imgToData.py -in data/gotEW.png -out data/gotEW.json
 
+# Data source:
+    # USGS, 1906 San Francisco Earthquake - Shaking at Gottingen, Germany
+    # https://earthquake.usgs.gov/earthquakes/events/1906calif/18april/got_seismogram.php
+
 import argparse
 import json
 import math
