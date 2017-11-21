@@ -24,6 +24,28 @@ def angleBetweenPoints(p1, p2):
     rad = math.atan2(deltaY, deltaX)
     return math.degrees(rad)
 
+def lerp(a, b, mu):
+    return (b-a) * mu + a
+
+def lerpPoint(p1, p2, mu):
+    xs = [p1[0], p2[0]]
+    ys = [p1[1], p2[1]]
+    deltaX = p2[0] - p1[0]
+    x = deltaX * mu + p1[0]
+    func = interpolate.interp1d(xs, ys)
+    y = func(x)
+    return (x, y)
+
+def lim(value, v0, v1):
+    if value < v0:
+        value = v0
+    if value > v1:
+        value = v1
+    return value
+
+def limPoint(p, rangeX, rangeY):
+    return (lim(p[0], rangeX[0], rangeX[1]), lim(p[1], rangeY[0], rangeY[1]))
+
 def norm(value, a, b):
     return 1.0 * (value - a) / (b - a)
 
@@ -45,6 +67,9 @@ def translatePoint(p, degrees, distance):
 data = []
 with open(INPUT_FILE) as f:
     data = json.load(f)
+slippages = [d["slippageFeet"] for d in data]
+slippageMin = min(slippages)
+slippageMax = max(slippages)
 
 # UTM, 10N is California
 utmProj = Proj(proj='utm', zone=10, ellps='WGS84')
@@ -106,28 +131,48 @@ draw = ImageDraw.Draw(im)
 # B = z delta, 255 => highest delta
 
 # draw data
-prevP3 = None
+print "Drawing fault z direction..."
+prevP4 = None
 for i,d in enumerate(data):
     if i > 0:
         d0 = data[i-1]
         p1 = (d0["x"], d0["y"])
         p2 = (d["x"], d["y"])
-        dist = math.hypot(p2[0] - p1[0], p2[1] - p1[1])
+        # dist = math.hypot(p2[0] - p1[0], p2[1] - p1[1])
+
+        amount = norm(d["slippageFeet"], slippageMin, slippageMax)
+        zDelta = lerp(MIN_Z_DELTA, MAX_Z_DELTA, amount)
 
         # determine the normal
         angle = angleBetweenPoints(p1, p2)
         normal = angle + 90
-        p3 = translatePoint(p2, normal, MAX_Z_DELTA)
-        if prevP3:
-            p4 = prevP3
+        if i == 1:
+            normal = 180
+        p4 = translatePoint(p2, normal, zDelta)
+        if prevP4:
+            p3 = prevP4
         else:
-            p4 = translatePoint(p1, normal, MAX_Z_DELTA)
-        prevP3 = p3
-        draw.polygon([p1, p2, p3, p4], outline=(0,0,255))
+            p3 = translatePoint(p1, normal, zDelta)
+        p3 = limPoint(p3, (0, TARGET_W), (0, TARGET_H))
+        p4 = limPoint(p4, (0, TARGET_W), (0, TARGET_H))
+        prevP4 = p4
+
+        # draw.polygon([p1, p2, p4, p3], outline=(0,0,255))
+        distTop = math.hypot(p4[0] - p1[0], p4[1] - p1[1])
+        distBottom = math.hypot(p3[0] - p2[0], p3[1] - p2[1])
+        dist = int(round(max([distTop, distBottom])))
+
+        for j in range(dist):
+            percent = 1.0 * j / (dist-1)
+            pTop = lerpPoint(p1, p3, percent)
+            pBottom = lerpPoint(p2, p4, percent)
+            pTop = limPoint(pTop, (0, TARGET_W), (0, TARGET_H))
+            pBottom = limPoint(pBottom, (0, TARGET_W), (0, TARGET_H))
+            b = int(round(255*percent))
+            draw.line([pTop, pBottom], fill=(0, 0, b))
 del draw
 
-
-
+print "Drawing fault x,y direction..."
 # make left-of-fault white (total delta) and right-of-fault black (no delta), make a gradient by the edge
 xs = [d["y"] for d in data]
 xs[0] = 0
@@ -138,10 +183,14 @@ imgData = list(im.getdata())
 newImgData = []
 for y in range(TARGET_H):
     for x in range(TARGET_W):
-        rgb = (0, 0, 0)
-        xActual = func1(y)
         i = y * TARGET_W + x
         (r, g, b) = imgData[i]
+        xActual = func1(y)
+
+        if b == 0 and x < xActual:
+            b = 255
+        rgb = (0, 0, b)
+
         if x < xActual:
             rgb = (255, 255, b)
             # make a gradient
