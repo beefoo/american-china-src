@@ -26,12 +26,12 @@ VERTICES_PER_EDGE_LOOP = BASE_VERTICES * 2**SUBDIVIDE_X
 print "%s vertices per edge loop" % VERTICES_PER_EDGE_LOOP
 
 CENTER = (0, 0, 0)
-WIDTH = 152.0
-HEIGHT = 14.0
+WIDTH = 123.0
+HEIGHT = 22.0
 EDGE_RADIUS = 4.0
-THICKNESS = 3.0
-DISPLACEMENT = (0, 2.4, -2.0)
-BASE_HEIGHT = 3.0
+THICKNESS = 4.0
+DISPLACEMENT = (0, 3.0, -3.0)
+BASE_HEIGHT = 6.0
 
 CENTER_WIDTH = WIDTH * 0.5
 BASE_WIDTH = WIDTH * 0.6
@@ -41,7 +41,7 @@ INSET_BASE_HEIGHT = BASE_HEIGHT * 0.6
 BODY_HEIGHT = (HEIGHT - BASE_HEIGHT) * 0.1 + BASE_HEIGHT
 BODY_WIDTH = WIDTH * 0.8
 CENTER_HEIGHT = INSET_BASE_HEIGHT + THICKNESS
-TOP_EDGE_THINKNESS = THICKNESS * 0.8
+TOP_EDGE_THINKNESS = THICKNESS * 1.1
 
 print "%s should be bigger than %s" % (BODY_HEIGHT+THICKNESS, CENTER_HEIGHT)
 
@@ -86,7 +86,7 @@ mesh = Mesh()
 
 # add the loops to mesh
 for i, d in enumerate(loopData):
-    r = d[0] * 0.5
+    r = d[0]
     z = d[1]
     if i <= 0:
         loops = ellipseMesh(VERTICES_PER_EDGE_LOOP, CENTER, r, r, z)

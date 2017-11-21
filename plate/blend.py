@@ -6,6 +6,7 @@
 
 import bpy
 import json
+import math
 import os
 
 # bpy.app.debug_wm = True
@@ -57,6 +58,10 @@ for d in data:
     for i in d["flipFaces"]:
         mesh.polygons[i].flip()
 
+    # Rotate the object 45 degrees (to stay within intended bounding box)
+    rad = math.radians(45)
+    obj.rotation_euler = (0, 0, rad)
+
     # Select the object
     obj.select = True
 
@@ -74,7 +79,7 @@ for obj in bpy.data.objects:
     if obj.name not in ["Camera", "Lamp"]:
         scene.objects.active = obj
 
-## for showing object thickness
+# for showing object thickness
 # bpy.ops.object.editmode_toggle()
 # bpy.context.object.data.show_statvis = True
 # scene.tool_settings.statvis.thickness_max = 3
