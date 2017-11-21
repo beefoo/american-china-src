@@ -20,8 +20,8 @@ IMAGE_MAP = list(im.getdata())
 
 # cup config in mm
 BASE_VERTICES = 16 # don't change this as it will break rounded rectangles
-SUBDIVIDE_Y = 2 # will subdivide base vertices B * 2^x
-SUBDIVIDE_X = 2
+SUBDIVIDE_Y = 4 # will subdivide base vertices B * 2^x
+SUBDIVIDE_X = 4
 VERTICES_PER_EDGE_LOOP = BASE_VERTICES * 2**SUBDIVIDE_X
 print "%s vertices per edge loop" % VERTICES_PER_EDGE_LOOP
 
@@ -30,7 +30,7 @@ WIDTH = 152.0
 HEIGHT = 14.0
 EDGE_RADIUS = 4.0
 THICKNESS = 3.0
-DISPLACEMENT_DEPTH = 2.0
+DISPLACEMENT = (0, 2.4, -2.0)
 BASE_HEIGHT = 3.0
 
 CENTER_WIDTH = WIDTH * 0.5
@@ -44,6 +44,10 @@ CENTER_HEIGHT = INSET_BASE_HEIGHT + THICKNESS
 TOP_EDGE_THINKNESS = THICKNESS * 0.8
 
 print "%s should be bigger than %s" % (BODY_HEIGHT+THICKNESS, CENTER_HEIGHT)
+
+# Adjust image data
+IMAGE_SCALE = 1.0
+IMAGE_TRANSLATE = (-CENTER_WIDTH*0.4, 0)
 
 PLATE = [
     [INSET_BASE_WIDTH - EDGE_RADIUS*2, INSET_BASE_HEIGHT],      # start with base inset edge
@@ -93,6 +97,11 @@ for i, d in enumerate(loopData):
     else:
         loop = ellipse(VERTICES_PER_EDGE_LOOP, CENTER, r, r, z)
         mesh.addEdgeLoop(loop)
+
+# displace edge loops with image map
+r = WIDTH * 0.5
+bounds = [(-r, -r), (r, r)]
+mesh.displaceEdgeLoops(IMAGE_MAP, IMAGE_MAP_W, IMAGE_MAP_H, bounds, DISPLACEMENT, IMAGE_SCALE, IMAGE_TRANSLATE)
 
 print "Calculating faces..."
 # generate faces from vertices
