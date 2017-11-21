@@ -3,7 +3,7 @@
 import json
 import math
 import numpy as np
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter
 from pprint import pprint
 from pyproj import Proj
 from scipy import interpolate
@@ -16,7 +16,7 @@ TARGET_H = 2048
 X_DELTA = int(round(TARGET_W * 0.01))
 MIN_Z_DELTA = 1
 MAX_Z_DELTA = TARGET_W * 0.1
-
+BLUR_RADIUS = 6
 
 def angleBetweenPoints(p1, p2):
     deltaX = p2[0] - p1[0]
@@ -201,6 +201,10 @@ for y in range(TARGET_H):
                 rgb = (color, color, b)
         newImgData.append(rgb)
 im.putdata(newImgData)
+
+print "Adding blur..."
+# add Gaussian filter
+im = im.filter(ImageFilter.GaussianBlur(BLUR_RADIUS))
 
 im.save(OUTPUT_FILE)
 print "Saved %s" % OUTPUT_FILE
