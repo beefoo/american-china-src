@@ -13,8 +13,10 @@ INPUT_FILE = "data/DistributionOfSlip.json"
 OUTPUT_FILE = "imgMap.png"
 TARGET_W = 2048
 TARGET_H = 2048
-MIN_NORMAL_LENGTH = 1
-MAX_NORMAL_LENGTH = TARGET_W * 0.1
+X_DELTA = int(round(TARGET_W * 0.01))
+MIN_Z_DELTA = 1
+MAX_Z_DELTA = TARGET_W * 0.1
+
 
 def angleBetweenPoints(p1, p2):
     deltaX = p2[0] - p1[0]
@@ -96,26 +98,12 @@ for i,d in enumerate(data):
     data[i]["x"] = x
     data[i]["y"] = y
 
-im = Image.new('RGB', (TARGET_W, TARGET_H), (255,255,255))
+im = Image.new('RGB', (TARGET_W, TARGET_H), (0,0,0))
 draw = ImageDraw.Draw(im)
 
-# initialize image by making left-of-fault black and right-of-fault white
-xs = [d["y"] for d in data]
-xs[0] = 0
-xs[-1] = TARGET_H
-ys = [d["x"] for d in data]
-func1 = interpolate.interp1d(xs, ys, kind='linear')
-imgData = []
-for y in range(TARGET_H):
-    for x in range(TARGET_W):
-        rgb = (255, 255, 255)
-        yp = 1.0 * y / (TARGET_H-1)
-        xp = 1.0 * y / (TARGET_W-1)
-        xActual = func1(y)
-        if x < xActual:
-            rgb = (0, 0, 0)
-        imgData.append(rgb)
-im.putdata(imgData)
+# R = x delta, 255 => highest delta
+# G = y delta, 255 => highest delta
+# B = z delta, 255 => highest delta
 
 # draw data
 prevP3 = None
@@ -124,21 +112,46 @@ for i,d in enumerate(data):
         d0 = data[i-1]
         p1 = (d0["x"], d0["y"])
         p2 = (d["x"], d["y"])
-        draw.line([p1, p2], fill=(0,0,0))
         dist = math.hypot(p2[0] - p1[0], p2[1] - p1[1])
 
         # determine the normal
         angle = angleBetweenPoints(p1, p2)
         normal = angle + 90
-        p3 = translatePoint(p2, normal, MAX_NORMAL_LENGTH)
+        p3 = translatePoint(p2, normal, MAX_Z_DELTA)
         if prevP3:
             p4 = prevP3
         else:
-            p4 = translatePoint(p1, normal, MAX_NORMAL_LENGTH)
+            p4 = translatePoint(p1, normal, MAX_Z_DELTA)
         prevP3 = p3
-        draw.polygon([p1, p2, p3, p4], outline=(255,0,0))
-
+        draw.polygon([p1, p2, p3, p4], outline=(0,0,255))
 del draw
+
+
+
+# make left-of-fault white (total delta) and right-of-fault black (no delta), make a gradient by the edge
+xs = [d["y"] for d in data]
+xs[0] = 0
+xs[-1] = TARGET_H
+ys = [d["x"] for d in data]
+func1 = interpolate.interp1d(xs, ys, kind='linear')
+imgData = list(im.getdata())
+newImgData = []
+for y in range(TARGET_H):
+    for x in range(TARGET_W):
+        rgb = (0, 0, 0)
+        xActual = func1(y)
+        i = y * TARGET_W + x
+        (r, g, b) = imgData[i]
+        if x < xActual:
+            rgb = (255, 255, b)
+            # make a gradient
+            delta = (xActual-x)
+            if delta < X_DELTA:
+                percent = 1.0 * delta / X_DELTA
+                color = int(round(percent * 255))
+                rgb = (color, color, b)
+        newImgData.append(rgb)
+im.putdata(newImgData)
 
 im.save(OUTPUT_FILE)
 print "Saved %s" % OUTPUT_FILE
