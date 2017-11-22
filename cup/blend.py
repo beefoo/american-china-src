@@ -69,6 +69,16 @@ for d in data:
     obj.modifiers.new("dec", type='DECIMATE')
     obj.modifiers["dec"].ratio = 0.24
 
-    # Apply modifiers
-    # bpy.ops.object.modifier_apply(apply_as='DATA', modifier="subd")
-    # bpy.ops.object.modifier_apply(apply_as='DATA', modifier="dec")
+# select all objects except camera and lamp
+for obj in bpy.data.objects:
+    if obj.name not in ["Camera", "Lamp"]:
+        scene.objects.active = obj
+
+# Apply modifiers
+bpy.ops.object.modifier_apply(apply_as='DATA', modifier="subd")
+bpy.ops.object.modifier_apply(apply_as='DATA', modifier="dec")
+
+# for showing object thickness
+# bpy.ops.object.editmode_toggle()
+# bpy.context.object.data.show_statvis = True
+# scene.tool_settings.statvis.thickness_max = 3
