@@ -1,5 +1,6 @@
 import math
 import numpy as np
+from pprint import pprint
 from scipy import interpolate
 
 def bspline(cv, n=100, degree=3, periodic=True):
@@ -144,6 +145,15 @@ def ellipseMesh(vertices, center, r1, r2, z, reverse=False):
 def lerp(a, b, mu):
     return (b-a) * mu + a
 
+def lerpPoint(p1, p2, mu):
+    xs = [p1[0], p2[0]]
+    ys = [p1[1], p2[1]]
+    deltaX = p2[0] - p1[0]
+    x = deltaX * mu + p1[0]
+    func = interpolate.interp1d(xs, ys)
+    y = func(x)
+    return (x, y)
+
 def norm(value, a, b):
     return 1.0 * (value - a) / (b - a)
 
@@ -155,10 +165,100 @@ def roundP(vList, precision):
     return rounded
 
 def shape(points, width, height, vertices, center, z):
-    print "TODO"
+    loop = []
+    hw = width * 0.5
+    hh = height * 0.5
+    for p in points:
+        x = p[0] * width
+        y = p[1] * height
+        x =  x - hw + center[0]
+        y =  y - hh + center[1]
+        loop.append((x, y, z))
+    return loop
 
-def shapeMesh(points, width, height, vertices, center, z):
-    print "TODO"
+def shapeMesh(points, width, height, vertices, center, z, reverse=False):
+    verts = []
+    edgesPerSide = vertices / 4
+    hw = width * 0.5
+    hh = height * 0.5
+
+    for row in range(edgesPerSide+1):
+        yp = 1.0 * row / edgesPerSide
+        yi = int(yp * edgesPerSide)
+        for col in range(edgesPerSide+1):
+            xp = 1.0 * col / edgesPerSide
+            xi = int(xp * edgesPerSide)
+            point = False
+
+            # point is on the perimeter, select point from list
+            if row == 0:
+                point = points[col]
+            elif row == edgesPerSide:
+                point = points[edgesPerSide*3-col]
+            elif col == 0:
+                point = points[vertices-row]
+            elif col == edgesPerSide:
+                point = points[edgesPerSide+row]
+
+            # point is inside the mesh, interpolate
+            if not point:
+                p1 = points[vertices-row]
+                p2 = points[edgesPerSide+row]
+                point = lerpPoint(p1, p2, xp)
+
+            x = (point[0] * width - hw) + center[0]
+            y = (point[1] * height - hh) + center[1]
+            verts.append((x, y, z))
+
+    vertLen = len(verts)
+    centerIndex = int(vertLen / 2)
+    centerRow = edgesPerSide / 2
+    centerCol = edgesPerSide/ 2
+
+    # start with one point at the center
+    edgeLoops = [[verts[centerIndex]]]
+
+    # add loops until we reach outer loop
+    edges = 2
+    while edges <= edgesPerSide:
+        edgeLoop = []
+        r = edges/2
+        # add top
+        for i in range(edges):
+            row = centerRow - r
+            col = centerCol + lerp(-r, r, 1.0 * i / edges)
+            i = int(row*(edgesPerSide+1) + col)
+            edgeLoop.append(verts[i])
+
+        # add right
+        for i in range(edges):
+            row = centerRow + lerp(-r, r, 1.0 * i / edges)
+            col = centerCol + r
+            i = int(row*(edgesPerSide+1) + col)
+            edgeLoop.append(verts[i])
+
+        # add bottom
+        for i in range(edges):
+            row = centerRow + r
+            col = centerCol + lerp(r, -r, 1.0 * i / edges)
+            i = int(row*(edgesPerSide+1) + col)
+            edgeLoop.append(verts[i])
+
+        # add left
+        for i in range(edges):
+            row = centerRow + lerp(r, -r, 1.0 * i / edges)
+            col = centerCol - r
+            i = int(row*(edgesPerSide+1) + col)
+            edgeLoop.append(verts[i])
+
+        # add edges
+        edgeLoops.append(edgeLoop)
+        edges += 2
+
+    if reverse:
+        edgeLoops = reversed(edgeLoops)
+
+    return edgeLoops
 
 def translatePoint(p, degrees, distance):
     radians = math.radians(degrees)
@@ -262,3 +362,7 @@ class Mesh:
         # if the last edge loop is a quad, add it's face
         if len(self.edgeLoops[-1]) == 4:
             self.faces.append([(i+indexOffset) for i in range(4)])
+
+        elif len(self.edgeLoops[-1]) > 4:
+            print "Warning: n-gon on last fast"
+            self.faces.append([(i+indexOffset) for i in range(len(self.edgeLoops[-1]))])
