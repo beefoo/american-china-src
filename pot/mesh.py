@@ -24,29 +24,36 @@ HEIGHT = 125.0
 EDGE_RADIUS = 4.0
 THICKNESS = 4.0
 DISPLACEMENT = (0, 3.0, -3.0)
+BASE_HEIGHT = 5.0
 BASE_INSET_HEIGHT = 3.0
-INSET = 0.9
-BODY = 0.96
 
-BODY_HEIGHT = 0.6 * HEIGHT
-HANDLE_HEIGHT = HEIGHT - BODY_HEIGHT
-BODY_BASE_HEIGHT = BODY_HEIGHT * 0.1667
+BASE_W = 0.9
+BASE_L = 0.95
+BASE_INSET_W = (BASE_W * 0.8) * WIDTH
+BASE_INSET_L = (BASE_L * 0.8875) * LENGTH
+BODY = 0.98
+
+BODY_HEIGHT = 0.6 * (HEIGHT-BASE_HEIGHT)
+HANDLE_HEIGHT = (HEIGHT-BASE_HEIGHT) - BODY_HEIGHT
+BODY_BASE_HEIGHT = BODY_HEIGHT * 0.2
 
 print "Check: %s > %s" % (BODY_BASE_HEIGHT-EDGE_RADIUS, EDGE_RADIUS)
 
 # define pot: x, y, z
 POT = [
-    (LENGTH*INSET-EDGE_RADIUS*2, WIDTH*INSET-EDGE_RADIUS*2, BASE_INSET_HEIGHT), # base inset edge
-    (LENGTH*INSET, WIDTH*INSET, BASE_INSET_HEIGHT),                             # base inset
-    (LENGTH*INSET, WIDTH*INSET, 0),                                             # base inner
-    (LENGTH, WIDTH, 0),                                                         # base outer
-    (LENGTH, WIDTH, EDGE_RADIUS),                                               # base outer edge
-    (LENGTH, WIDTH, BODY_BASE_HEIGHT-EDGE_RADIUS),                              # body base edge before
-    (LENGTH, WIDTH, BODY_BASE_HEIGHT),                                          # body base top
-    (LENGTH*BODY, WIDTH*BODY, BODY_BASE_HEIGHT),                                # body bottom
-    (LENGTH*BODY, WIDTH*BODY, BODY_BASE_HEIGHT+EDGE_RADIUS),                    # body bottom edge after
-    (LENGTH*BODY, WIDTH*BODY, BODY_HEIGHT-EDGE_RADIUS),                         # body top edge before
-    (LENGTH*BODY, WIDTH*BODY, BODY_HEIGHT),                                     # body top edge before
+    (BASE_INSET_L-EDGE_RADIUS*2, BASE_INSET_W-EDGE_RADIUS*2, BASE_INSET_HEIGHT), # base inset edge
+    (BASE_INSET_L, BASE_INSET_W, BASE_INSET_HEIGHT),                             # base inset
+    (BASE_INSET_L, BASE_INSET_W, 0),                                             # base inner
+    (LENGTH*BASE_L, WIDTH*BASE_W, 0),                                            # base outer bottom
+    (LENGTH*BASE_L, WIDTH*BASE_W, BASE_HEIGHT),                                  # base outer top
+    (LENGTH, WIDTH, BASE_HEIGHT),                                                # body bottom
+    (LENGTH, WIDTH, BASE_HEIGHT+EDGE_RADIUS),                                    # base outer edge
+    (LENGTH, WIDTH, BODY_BASE_HEIGHT-EDGE_RADIUS),                               # body base edge before
+    (LENGTH, WIDTH, BODY_BASE_HEIGHT),                                           # body base top
+    (LENGTH*BODY, WIDTH*BODY, BODY_BASE_HEIGHT),                                 # body bottom
+    (LENGTH*BODY, WIDTH*BODY, BODY_BASE_HEIGHT+EDGE_RADIUS),                     # body bottom edge after
+    (LENGTH*BODY, WIDTH*BODY, BODY_HEIGHT-EDGE_RADIUS),                          # body top edge before
+    (LENGTH*BODY, WIDTH*BODY, BODY_HEIGHT),                                      # body top edge before
 ]
 potLen = len(POT)
 
