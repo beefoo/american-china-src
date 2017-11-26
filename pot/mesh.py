@@ -24,14 +24,17 @@ HEIGHT = 125.0
 EDGE_RADIUS = 4.0
 THICKNESS = 4.0
 DISPLACEMENT = (0, 3.0, -3.0)
-BASE_HEIGHT = 5.0
+BASE_HEIGHT = 3.0
 BASE_INSET_HEIGHT = 3.0
+BODY_TOP_INSET_HEIGHT = 3.0
 
 BASE_W = 0.9
 BASE_L = 0.95
 BASE_INSET_W = (BASE_W * 0.8) * WIDTH
 BASE_INSET_L = (BASE_L * 0.8875) * LENGTH
-BODY = 0.98
+BODY_BTM = 0.9
+BODY_TOP = 0.7
+BODY_TOP_INSET = 0.6
 
 BODY_HEIGHT = 0.6 * (HEIGHT-BASE_HEIGHT)
 HANDLE_HEIGHT = (HEIGHT-BASE_HEIGHT) - BODY_HEIGHT
@@ -50,10 +53,14 @@ POT = [
     (LENGTH, WIDTH, BASE_HEIGHT+EDGE_RADIUS),                                    # base outer edge
     (LENGTH, WIDTH, BODY_BASE_HEIGHT-EDGE_RADIUS),                               # body base edge before
     (LENGTH, WIDTH, BODY_BASE_HEIGHT),                                           # body base top
-    (LENGTH*BODY, WIDTH*BODY, BODY_BASE_HEIGHT),                                 # body bottom
-    (LENGTH*BODY, WIDTH*BODY, BODY_BASE_HEIGHT+EDGE_RADIUS),                     # body bottom edge after
-    (LENGTH*BODY, WIDTH*BODY, BODY_HEIGHT-EDGE_RADIUS),                          # body top edge before
-    (LENGTH*BODY, WIDTH*BODY, BODY_HEIGHT),                                      # body top edge before
+    # (LENGTH*BODY_BTM, WIDTH*BODY_BTM, BODY_BASE_HEIGHT),                         # body bottom
+    (LENGTH*BODY_BTM, WIDTH*BODY_BTM, BODY_BASE_HEIGHT+EDGE_RADIUS),             # body bottom edge after
+    (LENGTH*BODY_BTM, WIDTH*BODY_BTM, BODY_BASE_HEIGHT+EDGE_RADIUS*2),           # body bottom edge after edge
+    # (LENGTH*BODY_TOP, WIDTH*BODY_TOP, BODY_HEIGHT-EDGE_RADIUS),                  # body top edge before
+    (LENGTH*BODY_TOP, WIDTH*BODY_TOP, BODY_HEIGHT-BODY_TOP_INSET_HEIGHT),               # body top
+    (LENGTH*BODY_TOP_INSET, WIDTH*BODY_TOP_INSET, BODY_HEIGHT-BODY_TOP_INSET_HEIGHT),   # body top inset bottom
+    (LENGTH*BODY_TOP_INSET, WIDTH*BODY_TOP_INSET, BODY_HEIGHT),                         # body top inset top
+    (LENGTH*BODY_TOP_INSET-EDGE_RADIUS*2, WIDTH*BODY_TOP_INSET-EDGE_RADIUS*2, BODY_HEIGHT),  # body top inset top
 ]
 potLen = len(POT)
 
@@ -69,7 +76,7 @@ BODY2_Y = (1.0 - BODY2_W) * 0.5
 NOSE_X = 0.05
 NOSE_W = 0.2
 NOSE_Y = (1.0 - NOSE_W) * 0.5
-NOSE_POINT_W = NOSE_W * 0.1
+NOSE_POINT_W = NOSE_W * 0.1667
 NOSE_POINT_Y = (1.0 - NOSE_POINT_W) * 0.5
 SHAPE = [
     (NOSE_X, NOSE_Y),       # top nose
