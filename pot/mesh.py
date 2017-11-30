@@ -132,6 +132,7 @@ SHAPE = [
 # build the mesh
 mesh = Mesh()
 
+# build the outer pot
 for i,p in enumerate(POT_OUTER):
     if len(p)==4:
         x, y, z, center = p
@@ -146,12 +147,24 @@ for i,p in enumerate(POT_OUTER):
         loop = shape(SHAPE, x, y, VERTICES_PER_EDGE_LOOP, center, z)
         mesh.addEdgeLoop(loop)
 
+# interpolate between outer pot and top hole
+loopFrom = mesh.edgeLoops[-1][:]
+x, y, z = POT_TOP[0]
+loopTo = ellipse(VERTICES_PER_EDGE_LOOP, TOP_CENTER, x, y, z)
+lerpCount = 4
+for i in range(lerpCount):
+    mu = 1.0 * (i+1) / (lerpCount+2)
+    loop = lerpEdgeloop(loopFrom, loopTo, mu)
+    mesh.addEdgeLoop(loop)
+
+# build the top hole of the pot
 for i,p in enumerate(POT_TOP):
     x, y, z = p
 
     loop = ellipse(VERTICES_PER_EDGE_LOOP, TOP_CENTER, x, y, z)
     mesh.addEdgeLoop(loop)
 
+# build the inner pot
 for i,p in enumerate(POT_INNER):
     if len(p)==4:
         x, y, z, center = p

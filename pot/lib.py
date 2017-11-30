@@ -145,6 +145,16 @@ def ellipseMesh(vertices, center, r1, r2, z, reverse=False):
 def lerp(a, b, mu):
     return (b-a) * mu + a
 
+def lerpEdgeloop(l1, l2, mu):
+    lerpedEdgeloop = []
+    for i, t in enumerate(l1):
+        p = []
+        for j in range(3):
+            pp = lerp(t[j], l2[i][j], mu)
+            p.append(pp)
+        lerpedEdgeloop.append(tuple(p))
+    return lerpedEdgeloop
+
 def lerpPoint(p1, p2, mu):
     xs = [p1[0], p2[0]]
     ys = [p1[1], p2[1]]
