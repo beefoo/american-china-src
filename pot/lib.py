@@ -390,5 +390,5 @@ class Mesh:
             self.faces.append([(i+indexOffset) for i in range(4)])
 
         elif len(self.edgeLoops[-1]) > 4:
-            print "Warning: n-gon on last fast"
+            print "Warning: n-gon on last loop"
             self.faces.append([(i+indexOffset) for i in range(len(self.edgeLoops[-1]))])

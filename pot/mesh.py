@@ -15,6 +15,7 @@ BASE_VERTICES = 16 # don't change this as it will break rounded rectangles
 SUBDIVIDE_Y = 0 # will subdivide base vertices B * 2^x
 SUBDIVIDE_X = 1
 VERTICES_PER_EDGE_LOOP = BASE_VERTICES * 2**SUBDIVIDE_X
+HALF_VERTICES_PER_EDGE_LOOP = VERTICES_PER_EDGE_LOOP / 2
 print "%s vertices per edge loop" % VERTICES_PER_EDGE_LOOP
 
 CENTER = (0, 0, 0)
@@ -147,11 +148,13 @@ for i,p in enumerate(POT_OUTER):
         loop = shape(SHAPE, x, y, VERTICES_PER_EDGE_LOOP, center, z)
         mesh.addEdgeLoop(loop)
 
-# interpolate between outer pot and top hole
+# interpolate between outer pot and top hole; this is where the handle will be placed
 loopFrom = mesh.edgeLoops[-1][:]
 x, y, z = POT_TOP[0]
 loopTo = ellipse(VERTICES_PER_EDGE_LOOP, TOP_CENTER, x, y, z)
-lerpCount = 4
+lerpCount = HALF_VERTICES_PER_EDGE_LOOP/4+1
+HANDLE_LOOP_START = len(mesh.edgeLoops)
+HANDLE_LOOP_END = HANDLE_LOOP_START + lerpCount
 for i in range(lerpCount):
     mu = 1.0 * (i+1) / (lerpCount+2)
     loop = lerpEdgeloop(loopFrom, loopTo, mu)
