@@ -13,7 +13,7 @@ PRECISION = 8
 # cup config in mm
 BASE_VERTICES = 16 # don't change this as it will break rounded rectangles
 SUBDIVIDE_Y = 0 # will subdivide base vertices B * 2^x
-SUBDIVIDE_X = 0
+SUBDIVIDE_X = 1
 VERTICES_PER_EDGE_LOOP = BASE_VERTICES * 2**SUBDIVIDE_X
 print "%s vertices per edge loop" % VERTICES_PER_EDGE_LOOP
 

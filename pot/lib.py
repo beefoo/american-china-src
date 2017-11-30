@@ -174,10 +174,23 @@ def roundP(vList, precision):
         rounded.append(t)
     return rounded
 
+def bsplineShape(points, vertices):
+    points = bspline(points, n=vertices+1, periodic=True)
+    points = points[:-1]
+    offset = vertices / 8
+    a = points[(vertices-offset):]
+    b = points[:(vertices-offset)]
+    points = a + b
+    return points
+
 def shape(points, width, height, vertices, center, z):
     loop = []
     hw = width * 0.5
     hh = height * 0.5
+
+    if vertices > len(points):
+        points = bsplineShape(points, vertices)
+
     for p in points:
         x = p[0] * width
         y = p[1] * height
@@ -191,6 +204,9 @@ def shapeMesh(points, width, height, vertices, center, z, reverse=False):
     edgesPerSide = vertices / 4
     hw = width * 0.5
     hh = height * 0.5
+
+    if vertices > len(points):
+        points = bsplineShape(points, vertices)
 
     for row in range(edgesPerSide+1):
         yp = 1.0 * row / edgesPerSide
