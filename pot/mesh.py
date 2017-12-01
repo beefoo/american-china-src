@@ -20,7 +20,7 @@ print "%s vertices per edge loop" % VERTICES_PER_EDGE_LOOP
 
 CENTER = (0, 0, 0)
 
-WIDTH = 125.0
+WIDTH = 100.0
 LENGTH = 125.0
 HEIGHT = 140.0
 EDGE_RADIUS = 4.0
@@ -39,7 +39,7 @@ BODY_TOP_INSET = BODY_TOP - 0.1
 
 TOP_CENTER_OFFSET = (BODY_BTM - BODY_TOP) * 0.5
 OUTER_TOP_CENTER = (LENGTH*TOP_CENTER_OFFSET, 0, 0)
-TOP_CENTER = (LENGTH*(TOP_CENTER_OFFSET*2), 0, 0) # (LENGTH*0.1, 0, 0)
+TOP_CENTER = (LENGTH*TOP_CENTER_OFFSET*1.667, 0, 0)
 INNER_TOP_CENTER = (LENGTH*TOP_CENTER_OFFSET, 0, 0)
 
 BODY_HEIGHT = 0.6 * (HEIGHT-BASE_HEIGHT)
@@ -73,18 +73,20 @@ POT_OUTER = [
 ]
 print "Top inset length: %scm" % (LENGTH*BODY_TOP_INSET*0.1)
 
-TOP_RADIUS = (WIDTH*BODY_TOP_INSET*0.675-ER2) * 0.5
-TOP_RADIUS_INNER = TOP_RADIUS - 3.0
+TOP_HOLE_WIDTH = WIDTH*BODY_TOP_INSET*0.775-ER2
+TOP_HOLE_LENGTH = LENGTH*BODY_TOP_INSET*0.675-ER2
+TOP_HOLE_WIDTH_INNER = TOP_HOLE_WIDTH - 6.0
+TOP_HOLE_LENGTH_INNER = TOP_HOLE_LENGTH - 6.0
 TOP_HOLE_OUTER_HEIGHT = BODY_HEIGHT - 3.0
 TOP_HOLE_INNER_HEIGHT = TOP_HOLE_OUTER_HEIGHT - 3.0
-print "Top opening is %scm" % (TOP_RADIUS_INNER*2*0.1)
+print "Top opening is %scm x %scm" % (TOP_HOLE_LENGTH_INNER*0.1, TOP_HOLE_WIDTH_INNER*0.1)
 POT_TOP = [
-    (TOP_RADIUS+2.0, TOP_RADIUS+2.0, BODY_HEIGHT),              # top hole edge
-    (TOP_RADIUS, TOP_RADIUS, BODY_HEIGHT),                                      # top hole
-    (TOP_RADIUS, TOP_RADIUS, TOP_HOLE_OUTER_HEIGHT),                            # top hole bottom
-    (TOP_RADIUS_INNER, TOP_RADIUS_INNER, TOP_HOLE_OUTER_HEIGHT),                # top inner hole
-    (TOP_RADIUS_INNER, TOP_RADIUS_INNER, TOP_HOLE_INNER_HEIGHT),                # top inner hole bottom
-    (TOP_RADIUS_INNER+EDGE_RADIUS, TOP_RADIUS_INNER+EDGE_RADIUS, TOP_HOLE_INNER_HEIGHT),  # top inner hole bottom edge
+    (TOP_HOLE_LENGTH+4.0, TOP_HOLE_WIDTH+4.0, BODY_HEIGHT),              # top hole edge
+    (TOP_HOLE_LENGTH, TOP_HOLE_WIDTH, BODY_HEIGHT),                                      # top hole
+    (TOP_HOLE_LENGTH, TOP_HOLE_WIDTH, TOP_HOLE_OUTER_HEIGHT),                            # top hole bottom
+    (TOP_HOLE_LENGTH_INNER, TOP_HOLE_WIDTH_INNER, TOP_HOLE_OUTER_HEIGHT),                # top inner hole
+    (TOP_HOLE_LENGTH_INNER, TOP_HOLE_WIDTH_INNER, TOP_HOLE_INNER_HEIGHT),                # top inner hole bottom
+    (TOP_HOLE_LENGTH_INNER+ER2, TOP_HOLE_WIDTH_INNER+ER2, TOP_HOLE_INNER_HEIGHT),  # top inner hole bottom edge
 ]
 
 INNER_BODY_TOP = TOP_HOLE_INNER_HEIGHT
@@ -131,6 +133,32 @@ SHAPE = [
     (0.0, NOSE_POINT_Y),# top nose point
 ]
 
+# Define the shape of the hole
+HOLE_NOSE_W = NOSE_W * 2.0
+HOLE_NOSE_Y = (1.0 - HOLE_NOSE_W) * 0.5
+HOLE_NOSE_POINT_W = HOLE_NOSE_W * 0.25
+HOLE_NOSE_POINT_Y = (1.0 - HOLE_NOSE_POINT_W) * 0.5
+HOLE_EDGE_X = EDGE_X*4
+HOLE_EDGE_Y = EDGE_Y*4
+SHAPE_HOLE = [
+    (NOSE_X, HOLE_NOSE_Y),       # top nose
+    (BODY1_X, BODY1_Y),     # top body 1
+    (BODY2_X, BODY2_Y),     # top body 2
+    (1.0-HOLE_EDGE_X, 0.0),      # top right, edge before
+    (1.0, 0.0),             # top right
+    (1.0, HOLE_EDGE_Y),          # top right, edge after
+    (1.0, 0.5),             # middle right
+    (1.0, 1.0-HOLE_EDGE_Y),      # bottom right, edge before
+    (1.0, 1.0),             # bottom right
+    (1.0-HOLE_EDGE_X, 1.0),      # bottom right, edge after
+    (BODY2_X, 1.0-BODY2_Y),     # bottom body 2
+    (BODY1_X, 1.0-BODY1_Y),   # bottom body 1
+    (NOSE_X, 1.0-HOLE_NOSE_Y),   # bottom nose
+    (0.0, 1.0-HOLE_NOSE_POINT_Y),    # bottom nose point
+    (0.0, 0.5),             # middle left (point of iron)
+    (0.0, HOLE_NOSE_POINT_Y),# top nose point
+]
+
 # build the mesh
 mesh = Mesh()
 
@@ -152,7 +180,7 @@ for i,p in enumerate(POT_OUTER):
 # interpolate between outer pot and top hole; this is where the handle will be placed
 loopFrom = mesh.edgeLoops[-1][:]
 x, y, z = POT_TOP[0]
-loopTo = ellipse(VERTICES_PER_EDGE_LOOP, TOP_CENTER, x, y, z)
+loopTo = shape(SHAPE_HOLE, x, y, VERTICES_PER_EDGE_LOOP, TOP_CENTER, z)
 lerpCount = HALF_VERTICES_PER_EDGE_LOOP/4+1
 HANDLE_LOOP_START = len(mesh.edgeLoops)
 HANDLE_LOOP_END = HANDLE_LOOP_START + lerpCount
@@ -164,9 +192,9 @@ for i in range(lerpCount):
 # build the top hole of the pot
 for i,p in enumerate(POT_TOP):
     x, y, z = p
-
-    loop = ellipse(VERTICES_PER_EDGE_LOOP, TOP_CENTER, x, y, z)
+    loop = shape(SHAPE_HOLE, x, y, VERTICES_PER_EDGE_LOOP, TOP_CENTER, z)
     mesh.addEdgeLoop(loop)
+
 
 # build the inner pot
 for i,p in enumerate(POT_INNER):
