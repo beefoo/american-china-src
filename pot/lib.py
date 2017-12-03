@@ -3,6 +3,9 @@ import numpy as np
 from pprint import pprint
 from scipy import interpolate
 
+def addZ(tup, z):
+    return (tup[0], tup[1], z)
+
 def bspline(cv, n=100, degree=3, periodic=True):
     """ Calculate n samples on a bspline
 
@@ -166,6 +169,90 @@ def lerpPoint(p1, p2, mu):
 
 def norm(value, a, b):
     return 1.0 * (value - a) / (b - a)
+
+# http://www.petercollingridge.co.uk/pygame-3d-graphics-tutorial/rotation-3d
+def rotateX(points, center, degrees):
+    radians = math.radians(degrees)
+    cx, cy, cz = center
+    rotated = []
+    for p in points:
+        x, y, z = p
+        y = y - cy
+        z = z - cz
+        d = math.hypot(y, z)
+        theta  = math.atan2(y, z) + radians
+        z = cz + d * math.cos(theta)
+        y = cy + d * math.sin(theta)
+        rotated.append((x, y, z))
+    return rotated
+
+def rotateY(points, center, degrees):
+    radians = math.radians(degrees)
+    cx, cy, cz = center
+    rotated = []
+    for p in points:
+        x, y, z = p
+        x = x - cx
+        z = z - cz
+        d = math.hypot(x, z)
+        theta  = math.atan2(x, z) + radians
+        z = cz + d * math.cos(theta)
+        x = cx + d * math.sin(theta)
+        rotated.append((x, y, z))
+    return rotated
+
+def rotateZ(points, center, degrees):
+    radians = math.radians(degrees)
+    cx, cy, cz = center
+    rotated = []
+    for p in points:
+        x, y, z = p
+        x = x - cx
+        y = y - cy
+        d = math.hypot(y, x)
+        theta = math.atan2(y, x) + radians
+        x = cx + d * math.cos(theta)
+        y = cy + d * math.sin(theta)
+        rotated.append((x, y, z))
+    return rotated
+
+def roundedRect(vertices, c, w, h, z, r):
+    square = []
+    hw = w * 0.5
+    hh = h * 0.5
+
+    # top left -> top right
+    y = c[1] - hh
+    x = c[0] - hw
+    square += [(x, y), (x + r, y), (c[0], y), (x + w - r, y)]
+    # top right to bottom right
+    x = c[0] + hw
+    y = c[1] - hh
+    square += [(x, y), (x, y+r), (x, c[1]), (x, y + h - r)]
+    # bottom right to bottom left
+    y = c[1] + hh
+    x = c[0] + hw
+    square += [(x, y), (x - r, y), (c[0], y), (x - w + r, y)]
+    # bottom left to top left
+    x = c[0] - hw
+    y = c[1] + hh
+    square += [(x, y), (x, y - r), (x, c[1]), (x, y - h + r)]
+
+    if vertices > 16:
+        # use b-spline for rounding
+        rounded = bspline(square, vertices+1)
+        # offset
+        rounded = rounded[:-1]
+        offset = vertices / 8
+        a = rounded[(vertices-offset):]
+        b = rounded[:(vertices-offset)]
+        rounded = a + b
+    else:
+        rounded = square
+
+    # add z
+    rounded = [(r[0], r[1], z) for r in rounded]
+    return rounded
 
 def roundP(vList, precision):
     rounded = []
@@ -389,6 +476,6 @@ class Mesh:
         if len(self.edgeLoops[-1]) == 4:
             self.faces.append([(i+indexOffset) for i in range(4)])
 
-        elif len(self.edgeLoops[-1]) > 4:
-            print "Warning: n-gon on last loop"
-            self.faces.append([(i+indexOffset) for i in range(len(self.edgeLoops[-1]))])
+        # elif len(self.edgeLoops[-1]) > 4:
+        #     print "Warning: n-gon on last loop"
+        #     self.faces.append([(i+indexOffset) for i in range(len(self.edgeLoops[-1]))])
