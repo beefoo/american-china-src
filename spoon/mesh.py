@@ -21,7 +21,7 @@ DATA_FILE = "data.csv"
 VALUE_KEY = "percent"
 DATA_PRECISION = 3
 START_YEAR = 1880
-END_YEAR = 2010
+END_YEAR = 2015
 YEAR_INCR = 10
 BASE_YEARS = [1920, 1950]           # these years will be the flat base
 CUP_YEARS = [START_YEAR, 1960]      # these years will make the cup of the spoon
@@ -42,9 +42,9 @@ print "%s vertices per edge loop" % VERTICES_PER_EDGE_LOOP
 # cup config in mm
 CENTER = (0, 0, 0)
 PRECISION = 8
-LENGTH = 140.0
-WIDTH = 50.0
-HEIGHT = 40.0
+LENGTH = 160.0
+WIDTH = 60.0
+HEIGHT = 50.0
 EDGE_RADIUS = 2.0
 THICKNESS = 4.8
 DISPLACEMENT_DEPTH = 2.0
