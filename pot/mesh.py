@@ -326,6 +326,41 @@ for h in HANDLE_RIGHT:
 
 hmesh.processEdgeloops()
 
+# config for spout
+SPOUT_VERTICES_PER_EDGE_LOOP = HANDLE_VERTICES_PER_EDGE_LOOP
+SPOUT_EDGE = EDGE_RADIUS
+SPOUT_INNER_RADIUS = 12.0 * 0.5
+SPOUT_THICKNESS = 4.0
+SPOUT_RADIUS = SPOUT_INNER_RADIUS + SPOUT_THICKNESS
+SPOUT_CENTER_HEIGHT = INNER_BODY_TOP - EDGE_RADIUS - SPOUT_RADIUS
+SPOUT_LENGTH = (LENGTH*BODY_TOP - LENGTH*BODY_BTM) * 0.5
+SPOUT_TO_X = -LENGTH*0.5
+SPOUT_FROM_X = -(LENGTH*BODY_TOP-T2)*0.5 # TODO: define this based on body
+SPOUT_INNER_X = -(LENGTH*BODY_TOP-T2)*0.5 # TODO: define this based on body
+
+# x, y, z, center
+SPOUT = [
+    (SPOUT_RADIUS, SPOUT_RADIUS, SPOUT_CENTER_HEIGHT, (SPOUT_FROM_X, 0, SPOUT_CENTER_HEIGHT)), # outer start
+    (SPOUT_RADIUS, SPOUT_RADIUS, SPOUT_CENTER_HEIGHT, (SPOUT_FROM_X-SPOUT_EDGE, 0, SPOUT_CENTER_HEIGHT)), # outer start edge
+    (SPOUT_RADIUS, SPOUT_RADIUS, SPOUT_CENTER_HEIGHT, (SPOUT_TO_X+SPOUT_EDGE, 0, SPOUT_CENTER_HEIGHT)), # outer end edge
+    (SPOUT_RADIUS, SPOUT_RADIUS, SPOUT_CENTER_HEIGHT, (SPOUT_TO_X, 0, SPOUT_CENTER_HEIGHT)), # outer end
+    (SPOUT_INNER_RADIUS, SPOUT_INNER_RADIUS, SPOUT_CENTER_HEIGHT, (SPOUT_TO_X, 0, SPOUT_CENTER_HEIGHT)), # inner end
+    (SPOUT_INNER_RADIUS, SPOUT_INNER_RADIUS, SPOUT_CENTER_HEIGHT, (SPOUT_TO_X+SPOUT_EDGE, 0, SPOUT_CENTER_HEIGHT)), # inner end edge
+    (SPOUT_INNER_RADIUS, SPOUT_INNER_RADIUS, SPOUT_CENTER_HEIGHT, (SPOUT_INNER_X-SPOUT_EDGE, 0, SPOUT_CENTER_HEIGHT)), # inner edge
+    (SPOUT_INNER_RADIUS, SPOUT_INNER_RADIUS, SPOUT_CENTER_HEIGHT, (SPOUT_INNER_X, 0, SPOUT_CENTER_HEIGHT)), # inner
+]
+
+# build the mesh
+smesh = Mesh()
+
+for h in SPOUT:
+    x, y, z, c = h
+    loop = ellipse(SPOUT_VERTICES_PER_EDGE_LOOP, c, x, y, z)
+    loop = rotateY(loop, c, -90.0)
+    smesh.addEdgeLoop(loop)
+
+smesh.processEdgeloops()
+
 # save data
 data = [
     {
@@ -340,6 +375,12 @@ data = [
         "verts": roundP(hmesh.verts, PRECISION),
         "edges": [],
         "faces": hmesh.faces,
+        "location": (0.0, 0.0, 0.0)
+    },{
+        "name": "Spout",
+        "verts": roundP(smesh.verts, PRECISION),
+        "edges": [],
+        "faces": smesh.faces,
         "location": (0.0, 0.0, 0.0)
     }
 ]
