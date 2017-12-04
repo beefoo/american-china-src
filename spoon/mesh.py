@@ -51,12 +51,13 @@ EDGE_RADIUS = 2.0
 THICKNESS = 4.8
 DISPLACEMENT_DEPTH = 2.0
 INSET_WIDTH = 3.0
+SPOON_DISTORT_CENTER_X = 0.4
 
-WIDTHS = [(0, 0.25), (0.15, 1.0), (0.5, 0.8), (0.9, 0.36), (1.0, 0.36)]
+WIDTHS = [(0, 0.25), (0.15, 1.0), (0.5, 0.75), (0.9, 0.36), (1.0, 0.36)]
 
 BASE_WIDTH = WIDTH * 0.5
 
-def ellipse(vertices, center, r1, r2, z):
+def ellipse(vertices, center, r1, r2, z, distortCenter=False):
     verts = []
     edgesPerSide = vertices / 4
     # add the top
@@ -82,10 +83,26 @@ def ellipse(vertices, center, r1, r2, z):
         y = v[1]
         u = x * math.sqrt(1.0 - 0.5 * (y * y))
         v = y * math.sqrt(1.0 - 0.5 * (x * x))
-        # convert to actual unit
+        e.append((u, v))
+
+    if distortCenter:
+        centerX = lerp(-1, 1, distortCenter)
+        for i,vert in enumerate(e):
+            x, y = vert
+            if x <= 0:
+                xp = norm(x, -1, 0)
+                x = lerp(-1, centerX, xp)
+            else:
+                xp = norm(x, 0, 1)
+                x = lerp(centerX, 1, xp)
+            e[i] = (x, y)
+
+    # convert to actual unit
+    for i,vert in enumerate(e):
+        u, v = vert
         u = u * r1 + center[0]
         v = v * r2 + center[1]
-        e.append((u,v,z))
+        e[i] = (u,v,z)
 
     return e
 
@@ -612,6 +629,8 @@ if OUTPUT_SVG:
 mesh = Mesh()
 baseRadiusX = 1.0 * (BASE_YEARS[1]-BASE_YEARS[0]) / (END_YEAR-START_YEAR) * LENGTH * 0.5
 baseRadiusY = BASE_WIDTH * 0.5
+if baseRadiusY > baseRadiusX:
+    baseRadiusY = baseRadiusX
 
 # start at the base inset with an ellipse mesh
 r1 = baseRadiusX - INSET_WIDTH*0.5
@@ -657,7 +676,7 @@ for i, d in enumerate(cupData):
         r1 = abs(d[0] - intersectionX) * LENGTH * 0.5
         r2 = width * 0.5
         # move up and out to next layer of the cup
-        edgeLoop = ellipse(VERTICES_PER_EDGE_LOOP, center, r1, r2, center[2])
+        edgeLoop = ellipse(VERTICES_PER_EDGE_LOOP, center, r1, r2, center[2], SPOON_DISTORT_CENTER_X)
         mesh.addEdgeLoop(edgeLoop)
 
     else:
