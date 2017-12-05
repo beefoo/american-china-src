@@ -373,6 +373,14 @@ def shapeMesh(points, width, height, vertices, center, z, reverse=False):
 
     return edgeLoops
 
+def translateLoop(loop, v):
+    newLoop = []
+    tx, ty, tz = v
+    for l in loop:
+        x, y, z = l
+        newLoop.append((x+tx, y+ty, z+tz))
+    return newLoop
+
 def translatePoint(p, degrees, distance):
     radians = math.radians(degrees)
     x2 = p[0] + distance * math.cos(radians)
