@@ -185,9 +185,39 @@ loopTo = shape(SHAPE_HOLE, x, y, VERTICES_PER_EDGE_LOOP, TOP_CENTER, z)
 lerpCount = HALF_VERTICES_PER_EDGE_LOOP/4+1
 HANDLE_LOOP_START = len(mesh.edgeLoops)
 HANDLE_LOOP_END = HANDLE_LOOP_START + lerpCount
+leftHandleVertStart = VERTICES_PER_EDGE_LOOP - VERTICES_PER_EDGE_LOOP/4 + VERTICES_PER_EDGE_LOOP/16
+leftHandleVertEnd = VERTICES_PER_EDGE_LOOP - VERTICES_PER_EDGE_LOOP/16
+rightHandleVertStart = VERTICES_PER_EDGE_LOOP/4 + VERTICES_PER_EDGE_LOOP/16
+rightHandleVertEnd = VERTICES_PER_EDGE_LOOP/2 - VERTICES_PER_EDGE_LOOP/16
 for i in range(lerpCount):
     mu = 1.0 * (i+1) / (lerpCount+2)
     loop = lerpEdgeloop(loopFrom, loopTo, mu)
+
+    for j,v in enumerate(loop):
+        # edge-edge-edge-edge-edge
+        if i==0:
+            if rightHandleVertStart <= j <= rightHandleVertEnd or leftHandleVertStart <= j <= leftHandleVertEnd:
+                loop[j] = v # TODO
+        # edge-edge-edge-edge-edge
+        elif i >= lerpCount-1:
+            if rightHandleVertStart <= j <= rightHandleVertEnd or leftHandleVertStart <= j <= leftHandleVertEnd:
+                loop[j] = v # TODO
+        # edge-hole-hole-hole-edge
+        else:
+            # this is a hole
+            if rightHandleVertStart < j < rightHandleVertEnd or leftHandleVertStart < j < leftHandleVertEnd:
+                loop[j] = False
+
+            # this is the edge
+            if j==rightHandleVertStart:
+                loop[j] = v # TODO
+            elif j==rightHandleVertEnd:
+                loop[j] = v # TODO
+            elif j==leftHandleVertStart:
+                loop[j] = v # TODO
+            elif j==leftHandleVertEnd:
+                loop[j] = v # TODO
+
     mesh.addEdgeLoop(loop)
 
 # build the top hole of the pot
@@ -381,7 +411,8 @@ data = [
         "faces": mesh.faces,
         "location": CENTER,
         "flipFaces": range((VERTICES_PER_EDGE_LOOP/4)**2)
-    },{
+    }
+    ,{
         "name": "Handle",
         "verts": roundP(hmesh.verts, PRECISION),
         "edges": [],

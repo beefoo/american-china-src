@@ -454,12 +454,15 @@ class Mesh:
             for i in range(aLen):
                 v1 = i
                 v2 = i + 1
+
                 v3 = i + 1 + aLen
                 v4 = i + aLen
                 if v2 >= aLen:
                     v2 = 0
                     v3 = aLen
-                faces.append((v1+indexOffset, v2+indexOffset, v3+indexOffset, v4+indexOffset))
+                # only add a face if all four vertices or valid (not a hole)
+                if False not in [loopA[v1], loopA[v2], loopB[v1], loopB[v2]]:
+                    faces.append((v1+indexOffset, v2+indexOffset, v3+indexOffset, v4+indexOffset))
 
         self.faces += faces
 
@@ -484,6 +487,4 @@ class Mesh:
         if len(self.edgeLoops[-1]) == 4:
             self.faces.append([(i+indexOffset) for i in range(4)])
 
-        # elif len(self.edgeLoops[-1]) > 4:
-        #     print "Warning: n-gon on last loop"
-        #     self.faces.append([(i+indexOffset) for i in range(len(self.edgeLoops[-1]))])
+        # TODO: remove "False" vertices and update faces with new indices
