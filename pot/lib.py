@@ -488,3 +488,4 @@ class Mesh:
             self.faces.append([(i+indexOffset) for i in range(4)])
 
         # TODO: remove "False" vertices and update faces with new indices
+        offsets = [0 for v in self.verts]
