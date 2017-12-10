@@ -460,9 +460,7 @@ class Mesh:
                 if v2 >= aLen:
                     v2 = 0
                     v3 = aLen
-                # only add a face if all four vertices or valid (not a hole)
-                if False not in [loopA[v1], loopA[v2], loopB[v1], loopB[v2]]:
-                    faces.append((v1+indexOffset, v2+indexOffset, v3+indexOffset, v4+indexOffset))
+                faces.append((v1+indexOffset, v2+indexOffset, v3+indexOffset, v4+indexOffset))
 
         self.faces += faces
 
@@ -487,5 +485,22 @@ class Mesh:
         if len(self.edgeLoops[-1]) == 4:
             self.faces.append([(i+indexOffset) for i in range(4)])
 
-        # TODO: remove "False" vertices and update faces with new indices
+        # prepare to remove "False" vertices
         offsets = [0 for v in self.verts]
+        offset = 0
+        for i, v in enumerate(self.verts):
+            if v is False:
+                offset += 1
+            else:
+                offsets[i] = offset
+        # remove faces with "False" vertices
+        verts = self.verts
+        self.faces = [f for f in self.faces if len(f)==4 and False not in [verts[f[0]], verts[f[1]], verts[f[2]], verts[f[3]]]]
+        # remove "False" vertices
+        self.verts = [v for v in verts if v is not False]
+        # update faces with new indices
+        for i, f in enumerate(self.faces):
+            tup = []
+            for j, vIndex in enumerate(f):
+                tup.append(vIndex - offsets[vIndex])
+            self.faces[i] = tuple(tup)
