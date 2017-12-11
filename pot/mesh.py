@@ -190,7 +190,7 @@ leftHandleVertEnd = VERTICES_PER_EDGE_LOOP - VERTICES_PER_EDGE_LOOP/16
 rightHandleVertStart = VERTICES_PER_EDGE_LOOP/4 + VERTICES_PER_EDGE_LOOP/16
 rightHandleVertEnd = VERTICES_PER_EDGE_LOOP/2 - VERTICES_PER_EDGE_LOOP/16
 for i in range(lerpCount):
-    mu = 1.0 * (i+1) / (lerpCount+2)
+    mu = 1.0 * (i+1) / (lerpCount+1)
     loop = lerpEdgeloop(loopFrom, loopTo, mu)
 
     for j,v in enumerate(loop):

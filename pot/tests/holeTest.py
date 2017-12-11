@@ -168,7 +168,7 @@ lerpCount = HALF_VERTICES_PER_EDGE_LOOP/4+1
 
 loops = [loopFrom]
 for i in range(lerpCount):
-    mu = 1.0 * (i+1) / (lerpCount+2)
+    mu = 1.0 * (i+1) / (lerpCount+1)
     loop = lerpEdgeloop(loopFrom, loopTo, mu)
     loops.append(loop)
 loops.append(loopTo)
