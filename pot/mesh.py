@@ -178,74 +178,6 @@ for i,p in enumerate(POT_OUTER):
         loop = shape(SHAPE, x, y, VERTICES_PER_EDGE_LOOP, center, z)
         mesh.addEdgeLoop(loop)
 
-# interpolate between outer pot and top hole; this is where the handle will be placed
-loopFrom = mesh.edgeLoops[-1][:]
-x, y, z = POT_TOP[0]
-loopTo = shape(SHAPE_HOLE, x, y, VERTICES_PER_EDGE_LOOP, TOP_CENTER, z)
-lerpCount = HALF_VERTICES_PER_EDGE_LOOP/4+1
-HANDLE_LOOP_START = len(mesh.edgeLoops)
-HANDLE_LOOP_END = HANDLE_LOOP_START + lerpCount
-leftHandleVertStart = VERTICES_PER_EDGE_LOOP - VERTICES_PER_EDGE_LOOP/4 + VERTICES_PER_EDGE_LOOP/16
-leftHandleVertEnd = VERTICES_PER_EDGE_LOOP - VERTICES_PER_EDGE_LOOP/16
-rightHandleVertStart = VERTICES_PER_EDGE_LOOP/4 + VERTICES_PER_EDGE_LOOP/16
-rightHandleVertEnd = VERTICES_PER_EDGE_LOOP/2 - VERTICES_PER_EDGE_LOOP/16
-for i in range(lerpCount):
-    mu = 1.0 * (i+1) / (lerpCount+1)
-    loop = lerpEdgeloop(loopFrom, loopTo, mu)
-
-    for j,v in enumerate(loop):
-        # edge-edge-edge-edge-edge
-        if i==0:
-            if rightHandleVertStart <= j <= rightHandleVertEnd or leftHandleVertStart <= j <= leftHandleVertEnd:
-                loop[j] = v # TODO
-        # edge-edge-edge-edge-edge
-        elif i >= lerpCount-1:
-            if rightHandleVertStart <= j <= rightHandleVertEnd or leftHandleVertStart <= j <= leftHandleVertEnd:
-                loop[j] = v # TODO
-        # edge-hole-hole-hole-edge
-        else:
-            # this is a hole
-            if rightHandleVertStart < j < rightHandleVertEnd or leftHandleVertStart < j < leftHandleVertEnd:
-                loop[j] = False
-
-            # this is the edge
-            if j==rightHandleVertStart:
-                loop[j] = v # TODO
-            elif j==rightHandleVertEnd:
-                loop[j] = v # TODO
-            elif j==leftHandleVertStart:
-                loop[j] = v # TODO
-            elif j==leftHandleVertEnd:
-                loop[j] = v # TODO
-
-    mesh.addEdgeLoop(loop)
-
-# build the top hole of the pot
-for i,p in enumerate(POT_TOP):
-    x, y, z = p
-    loop = shape(SHAPE_HOLE, x, y, VERTICES_PER_EDGE_LOOP, TOP_CENTER, z)
-    mesh.addEdgeLoop(loop)
-
-
-# build the inner pot
-for i,p in enumerate(POT_INNER):
-    if len(p)==4:
-        x, y, z, center = p
-    else:
-        x, y, z = p
-        center = CENTER
-
-    if i >= potInnerLen-1:
-        loops = shapeMesh(SHAPE, x, y, VERTICES_PER_EDGE_LOOP, center, z, True)
-        mesh.addEdgeLoops(loops)
-    else:
-        loop = shape(SHAPE, x, y, VERTICES_PER_EDGE_LOOP, center, z)
-        mesh.addEdgeLoop(loop)
-
-print "Calculating faces..."
-# generate faces from vertices
-mesh.processEdgeloops()
-
 # config for handle
 HANDLE_VERTICES_PER_EDGE_LOOP = BASE_VERTICES * 2**(SUBDIVIDE_X-1)
 HANDLE_BOTTOM = BODY_HEIGHT
@@ -283,6 +215,122 @@ HANDLE_LEFT_CENTER_BULGE = (HANDLE_LEFT_CENTER[0]-HANDLE_SIDE_BULGE_LENGTH_LEFT,
 HANDLE_RIGHT_CENTER = ((BODY_TOP_INSET_EDGE_X_RIGHT + TOP_HOLE_X_RIGHT) * 0.5, 0, HANDLE_BOTTOM)
 HANDLE_RIGHT_CENTER_BULGE = (HANDLE_RIGHT_CENTER[0]+HANDLE_SIDE_BULGE_LENGTH_RIGHT, 0, HANDLE_SIDE_BLUGE_HEIGHT_RIGHT)
 HANDLE_TOP_BULGE = 4.0
+
+# interpolate between outer pot and top hole; this is where the handle will be placed
+loopFrom = mesh.edgeLoops[-1][:]
+x, y, z = POT_TOP[0]
+loopTo = shape(SHAPE_HOLE, x, y, VERTICES_PER_EDGE_LOOP, TOP_CENTER, z)
+lerpCount = HALF_VERTICES_PER_EDGE_LOOP/4+1
+HANDLE_LOOP_START = len(mesh.edgeLoops)
+HANDLE_LOOP_END = HANDLE_LOOP_START + lerpCount
+leftHandleVertStart = VERTICES_PER_EDGE_LOOP - VERTICES_PER_EDGE_LOOP/4 + VERTICES_PER_EDGE_LOOP/16
+leftHandleVertEnd = VERTICES_PER_EDGE_LOOP - VERTICES_PER_EDGE_LOOP/16
+rightHandleVertStart = VERTICES_PER_EDGE_LOOP/4 + VERTICES_PER_EDGE_LOOP/16
+rightHandleVertEnd = VERTICES_PER_EDGE_LOOP/2 - VERTICES_PER_EDGE_LOOP/16
+LERP_EDGE_RADIUS = 1.5
+# left handle lerp
+L_LERP_LEFT_X = HANDLE_LEFT_CENTER[0] - HANDLE_SIDE_BASE_LENGTH * 0.5 - LERP_EDGE_RADIUS
+L_LERP_RIGHT_X = HANDLE_LEFT_CENTER[0] + HANDLE_SIDE_BASE_LENGTH * 0.5 + LERP_EDGE_RADIUS
+L_LERP_TOP_Y = HANDLE_LEFT_CENTER[1] - HANDLE_SIDE_BASE_WIDTH * 0.5 - LERP_EDGE_RADIUS
+L_LERP_BOTTOM_Y = HANDLE_LEFT_CENTER[1] + HANDLE_SIDE_BASE_WIDTH * 0.5 + LERP_EDGE_RADIUS
+# right handle lerp
+R_LERP_LEFT_X = HANDLE_RIGHT_CENTER[0] - HANDLE_SIDE_BASE_LENGTH * 0.5 - LERP_EDGE_RADIUS
+R_LERP_RIGHT_X = HANDLE_RIGHT_CENTER[0] + HANDLE_SIDE_BASE_LENGTH * 0.5 + LERP_EDGE_RADIUS
+R_LERP_TOP_Y = HANDLE_RIGHT_CENTER[1] - HANDLE_SIDE_BASE_WIDTH * 0.5 - LERP_EDGE_RADIUS
+R_LERP_BOTTOM_Y = HANDLE_RIGHT_CENTER[1] + HANDLE_SIDE_BASE_WIDTH * 0.5 + LERP_EDGE_RADIUS
+for i in range(lerpCount):
+    mu = 1.0 * (i+1) / (lerpCount+1)
+    loop = lerpEdgeloop(loopFrom, loopTo, mu)
+
+    for j,v in enumerate(loop):
+        # adjust right handle
+        if rightHandleVertStart <= j <= rightHandleVertEnd:
+            x, y, z = v
+            # adjust top/bottom edge
+            if j==rightHandleVertStart:
+                y = R_LERP_TOP_Y
+            elif j==rightHandleVertStart+1:
+                y = R_LERP_TOP_Y + LERP_EDGE_RADIUS
+            elif j==rightHandleVertEnd-1:
+                y = R_LERP_BOTTOM_Y - LERP_EDGE_RADIUS
+            elif j==rightHandleVertEnd:
+                y = R_LERP_BOTTOM_Y
+            # adjust left/right edge
+            if i==0:
+                x = R_LERP_RIGHT_X
+            elif i==lerpCount-1:
+                x = R_LERP_LEFT_X
+            loop[j] = (x, y, z)
+        # adjust left handle
+        elif leftHandleVertStart-1 <= j <= leftHandleVertEnd+1:
+            x, y, z = v
+            # adjust left/right edge
+            mu = 1.0 * i / (lerpCount-1)
+            x = lerp(L_LERP_LEFT_X, L_LERP_RIGHT_X, mu)
+            mu = norm(j, leftHandleVertStart, leftHandleVertEnd)
+            if mu > 1.0:
+                y = R_LERP_TOP_Y - 1.0
+            elif mu < 0.0:
+                y = R_LERP_BOTTOM_Y + 1.0
+            else:
+                y = lerp(R_LERP_BOTTOM_Y, R_LERP_TOP_Y, mu)
+            loop[j] = (x, y, z)
+
+        # this is a hole
+        if (rightHandleVertStart < j < rightHandleVertEnd or leftHandleVertStart < j < leftHandleVertEnd) and i > 0 and i < lerpCount-1:
+            loop[j] = False
+
+        # # edge-edge-edge-edge-edge
+        # if i==0:
+        #     if rightHandleVertStart <= j <= rightHandleVertEnd or leftHandleVertStart <= j <= leftHandleVertEnd:
+        #         loop[j] = v # TODO
+        # # edge-edge-edge-edge-edge
+        # elif i >= lerpCount-1:
+        #     if rightHandleVertStart <= j <= rightHandleVertEnd or leftHandleVertStart <= j <= leftHandleVertEnd:
+        #         loop[j] = v # TODO
+        # # edge-hole-hole-hole-edge
+        # else:
+        #     # this is a hole
+        #     if rightHandleVertStart < j < rightHandleVertEnd or leftHandleVertStart < j < leftHandleVertEnd:
+        #         loop[j] = False
+        #
+        #     # this is the edge
+        #     if j==rightHandleVertStart:
+        #         loop[j] = v # TODO
+        #     elif j==rightHandleVertEnd:
+        #         loop[j] = v # TODO
+        #     elif j==leftHandleVertStart:
+        #         loop[j] = v # TODO
+        #     elif j==leftHandleVertEnd:
+        #         loop[j] = v # TODO
+
+    mesh.addEdgeLoop(loop)
+
+# build the top hole of the pot
+for i,p in enumerate(POT_TOP):
+    x, y, z = p
+    loop = shape(SHAPE_HOLE, x, y, VERTICES_PER_EDGE_LOOP, TOP_CENTER, z)
+    mesh.addEdgeLoop(loop)
+
+
+# build the inner pot
+for i,p in enumerate(POT_INNER):
+    if len(p)==4:
+        x, y, z, center = p
+    else:
+        x, y, z = p
+        center = CENTER
+
+    if i >= potInnerLen-1:
+        loops = shapeMesh(SHAPE, x, y, VERTICES_PER_EDGE_LOOP, center, z, True)
+        mesh.addEdgeLoops(loops)
+    else:
+        loop = shape(SHAPE, x, y, VERTICES_PER_EDGE_LOOP, center, z)
+        mesh.addEdgeLoop(loop)
+
+print "Calculating faces..."
+# generate faces from vertices
+mesh.processEdgeloops()
 
 # handle left
 # x, y, z, center
