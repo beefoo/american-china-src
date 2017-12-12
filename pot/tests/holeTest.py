@@ -176,6 +176,12 @@ rightHandleVertStart = VERTICES_PER_EDGE_LOOP/4 + VERTICES_PER_EDGE_LOOP/16
 rightHandleVertEnd = VERTICES_PER_EDGE_LOOP/2 - VERTICES_PER_EDGE_LOOP/16
 
 LERP_EDGE_RADIUS = 1.5
+# left handle lerp
+L_LERP_LEFT_X = HANDLE_LEFT_CENTER[0] - HANDLE_SIDE_BASE_LENGTH * 0.5 - LERP_EDGE_RADIUS
+L_LERP_RIGHT_X = HANDLE_LEFT_CENTER[0] + HANDLE_SIDE_BASE_LENGTH * 0.5 + LERP_EDGE_RADIUS
+L_LERP_TOP_Y = HANDLE_LEFT_CENTER[1] - HANDLE_SIDE_BASE_WIDTH * 0.5 - LERP_EDGE_RADIUS
+L_LERP_BOTTOM_Y = HANDLE_LEFT_CENTER[1] + HANDLE_SIDE_BASE_WIDTH * 0.5 + LERP_EDGE_RADIUS
+# right handle lerp
 R_LERP_LEFT_X = HANDLE_RIGHT_CENTER[0] - HANDLE_SIDE_BASE_LENGTH * 0.5 - LERP_EDGE_RADIUS
 R_LERP_RIGHT_X = HANDLE_RIGHT_CENTER[0] + HANDLE_SIDE_BASE_LENGTH * 0.5 + LERP_EDGE_RADIUS
 R_LERP_TOP_Y = HANDLE_RIGHT_CENTER[1] - HANDLE_SIDE_BASE_WIDTH * 0.5 - LERP_EDGE_RADIUS
@@ -185,10 +191,9 @@ for i in range(lerpCount):
     mu = 1.0 * (i+1) / (lerpCount+1)
     loop = lerpEdgeloop(loopFrom, loopTo, mu)
     for j,v in enumerate(loop):
-        # flatten y
+        # adjust right handle
         if rightHandleVertStart <= j <= rightHandleVertEnd:
             x, y, z = v
-
             # adjust top/bottom edge
             if j==rightHandleVertStart:
                 y = R_LERP_TOP_Y
@@ -198,13 +203,25 @@ for i in range(lerpCount):
                 y = R_LERP_BOTTOM_Y - LERP_EDGE_RADIUS
             elif j==rightHandleVertEnd:
                 y = R_LERP_BOTTOM_Y
-
             # adjust left/right edge
             if i==0:
                 x = R_LERP_RIGHT_X
             elif i==lerpCount-1:
                 x = R_LERP_LEFT_X
-
+            loop[j] = (x, y, z)
+        # adjust left handle
+        elif leftHandleVertStart-1 <= j <= leftHandleVertEnd+1:
+            x, y, z = v
+            # adjust left/right edge
+            mu = 1.0 * i / (lerpCount-1)
+            x = lerp(L_LERP_LEFT_X, L_LERP_RIGHT_X, mu)
+            mu = norm(j, leftHandleVertStart, leftHandleVertEnd)
+            if mu > 1.0:
+                y = R_LERP_TOP_Y - 1.0
+            elif mu < 0.0:
+                y = R_LERP_BOTTOM_Y + 1.0
+            else:
+                y = lerp(R_LERP_BOTTOM_Y, R_LERP_TOP_Y, mu)
             loop[j] = (x, y, z)
 
     loops.append(loop)
