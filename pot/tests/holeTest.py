@@ -14,6 +14,8 @@ SCALE = 15
 OFFSET_X = 900
 OFFSET_Y = 1000
 
+# START CONFIG
+
 # cup config in mm
 BASE_VERTICES = 16 # don't change this as it will break rounded rectangles
 SUBDIVIDE_Y = 0 # will subdivide base vertices B * 2^x
@@ -158,6 +160,8 @@ HANDLE_RIGHT_CENTER = ((BODY_TOP_INSET_EDGE_X_RIGHT + TOP_HOLE_X_RIGHT) * 0.5, 0
 HANDLE_RIGHT_CENTER_BULGE = (HANDLE_RIGHT_CENTER[0]+HANDLE_SIDE_BULGE_LENGTH_RIGHT, 0, HANDLE_SIDE_BLUGE_HEIGHT_RIGHT)
 HANDLE_TOP_BULGE = 4.0
 
+# END CONFIG
+
 im = Image.new("RGB", (2000, 2000), (255,255,255))
 draw = ImageDraw.Draw(im)
 colors = [(0,0,0), (255,0,0), (0,255,0), (0,0,255), (255,0,255), (100,100,0), (0,255,255)]
@@ -166,10 +170,43 @@ loopFrom = shape(SHAPE, LENGTH*BODY_TOP_INSET-EDGE_RADIUS, WIDTH*BODY_TOP_INSET-
 loopTo = shape(SHAPE_HOLE, TOP_HOLE_LENGTH+TOP_HOLE_EDGE, TOP_HOLE_WIDTH+TOP_HOLE_EDGE, VERTICES_PER_EDGE_LOOP, TOP_CENTER, BODY_HEIGHT)
 lerpCount = HALF_VERTICES_PER_EDGE_LOOP/4+1
 
+leftHandleVertStart = VERTICES_PER_EDGE_LOOP - VERTICES_PER_EDGE_LOOP/4 + VERTICES_PER_EDGE_LOOP/16
+leftHandleVertEnd = VERTICES_PER_EDGE_LOOP - VERTICES_PER_EDGE_LOOP/16
+rightHandleVertStart = VERTICES_PER_EDGE_LOOP/4 + VERTICES_PER_EDGE_LOOP/16
+rightHandleVertEnd = VERTICES_PER_EDGE_LOOP/2 - VERTICES_PER_EDGE_LOOP/16
+
+LERP_EDGE_RADIUS = 1.5
+R_LERP_LEFT_X = HANDLE_RIGHT_CENTER[0] - HANDLE_SIDE_BASE_LENGTH * 0.5 - LERP_EDGE_RADIUS
+R_LERP_RIGHT_X = HANDLE_RIGHT_CENTER[0] + HANDLE_SIDE_BASE_LENGTH * 0.5 + LERP_EDGE_RADIUS
+R_LERP_TOP_Y = HANDLE_RIGHT_CENTER[1] - HANDLE_SIDE_BASE_WIDTH * 0.5 - LERP_EDGE_RADIUS
+R_LERP_BOTTOM_Y = HANDLE_RIGHT_CENTER[1] + HANDLE_SIDE_BASE_WIDTH * 0.5 + LERP_EDGE_RADIUS
 loops = [loopFrom]
 for i in range(lerpCount):
     mu = 1.0 * (i+1) / (lerpCount+1)
     loop = lerpEdgeloop(loopFrom, loopTo, mu)
+    for j,v in enumerate(loop):
+        # flatten y
+        if rightHandleVertStart <= j <= rightHandleVertEnd:
+            x, y, z = v
+
+            # adjust top/bottom edge
+            if j==rightHandleVertStart:
+                y = R_LERP_TOP_Y
+            elif j==rightHandleVertStart+1:
+                y = R_LERP_TOP_Y + LERP_EDGE_RADIUS
+            elif j==rightHandleVertEnd-1:
+                y = R_LERP_BOTTOM_Y - LERP_EDGE_RADIUS
+            elif j==rightHandleVertEnd:
+                y = R_LERP_BOTTOM_Y
+
+            # adjust left/right edge
+            if i==0:
+                x = R_LERP_RIGHT_X
+            elif i==lerpCount-1:
+                x = R_LERP_LEFT_X
+
+            loop[j] = (x, y, z)
+
     loops.append(loop)
 loops.append(loopTo)
 
@@ -180,10 +217,7 @@ loop = roundedRect(HANDLE_VERTICES_PER_EDGE_LOOP, HANDLE_RIGHT_CENTER, HANDLE_SI
 loop = rotateY(loop, HANDLE_RIGHT_CENTER, 180.0)
 loops.append(loop)
 
-leftHandleVertStart = VERTICES_PER_EDGE_LOOP - VERTICES_PER_EDGE_LOOP/4 + VERTICES_PER_EDGE_LOOP/16
-leftHandleVertEnd = VERTICES_PER_EDGE_LOOP - VERTICES_PER_EDGE_LOOP/16
-rightHandleVertStart = VERTICES_PER_EDGE_LOOP/4 + VERTICES_PER_EDGE_LOOP/16
-rightHandleVertEnd = VERTICES_PER_EDGE_LOOP/2 - VERTICES_PER_EDGE_LOOP/16
+
 
 pradius = 5
 for i,loop in enumerate(loops):
