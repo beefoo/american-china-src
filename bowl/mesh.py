@@ -56,13 +56,14 @@ BOWL = [
     [WIDTH, HEIGHT - EDGE_RADIUS],                              # 8, move up and out to outer top edge
     [WIDTH, HEIGHT],                                            # 9, move up to outer top
     [WIDTH-THICKNESS*2, HEIGHT],                                # 10, move in to inner top; STOP DISPLACEMENT HERE
-    [BODY_WIDTH-THICKNESS*2, BODY_HEIGHT],                      # 11, move down and in to inner body
-    [INSET_BASE_WIDTH, BASE_HEIGHT+THICKNESS],                  # 12, move down and in to inner base
-    [INSET_BASE_WIDTH - EDGE_RADIUS*2, BASE_HEIGHT+THICKNESS]   # 13, move in to inner base edge
+    [WIDTH-THICKNESS*2, HEIGHT - EDGE_RADIUS],                  # 11, move in to inner top edge
+    [BODY_WIDTH-THICKNESS*2, BODY_HEIGHT],                      # 12, move down and in to inner body
+    [INSET_BASE_WIDTH, BASE_HEIGHT+THICKNESS],                  # 13, move down and in to inner base
+    [INSET_BASE_WIDTH - EDGE_RADIUS*2, BASE_HEIGHT+THICKNESS]   # 14, move in to inner base edge
 ]
 bowlLen = len(BOWL)
 DISPLACE_START = 6
-DISPLACE_END = 10 * 0.95
+DISPLACE_END = 10 * 0.92
 
 targetEdgeCount = bowlLen * 2**SUBDIVIDE_Y
 targetDataCount = targetEdgeCount * 4
