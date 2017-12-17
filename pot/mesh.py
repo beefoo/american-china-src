@@ -238,9 +238,12 @@ R_LERP_LEFT_X = HANDLE_RIGHT_CENTER[0] - HANDLE_SIDE_BASE_LENGTH * 0.5 - LERP_ED
 R_LERP_RIGHT_X = HANDLE_RIGHT_CENTER[0] + HANDLE_SIDE_BASE_LENGTH * 0.5 + LERP_EDGE_RADIUS
 R_LERP_TOP_Y = HANDLE_RIGHT_CENTER[1] - HANDLE_SIDE_BASE_WIDTH * 0.5 - LERP_EDGE_RADIUS
 R_LERP_BOTTOM_Y = HANDLE_RIGHT_CENTER[1] + HANDLE_SIDE_BASE_WIDTH * 0.5 + LERP_EDGE_RADIUS
+LEFT_OPENING_ID = "LEFT_HANDLE_OPENING"
+RIGHT_OPENING_ID = "RIGHT_HANDLE_OPENING"
 for i in range(lerpCount):
     mu = 1.0 * (i+1) / (lerpCount+1)
     loop = lerpEdgeloop(loopFrom, loopTo, mu)
+    loopOpenings = [True for v in loop]
 
     for j,v in enumerate(loop):
         # adjust right handle
@@ -276,35 +279,60 @@ for i in range(lerpCount):
                 y = lerp(R_LERP_BOTTOM_Y, R_LERP_TOP_Y, mu)
             loop[j] = (x, y, z)
 
-        # this is a hole
-        if (rightHandleVertStart < j < rightHandleVertEnd or leftHandleVertStart < j < leftHandleVertEnd) and i > 0 and i < lerpCount-1:
-            loop[j] = False
+        # outer edge-edge-edge-edge-edge
+        if i==0:
+            # right side of right handle (flipped)
+            if rightHandleVertStart <= j <= rightHandleVertEnd:
+                openingIndex = 0
+                if j > rightHandleVertStart:
+                    openingIndex = HALF_VERTICES_PER_EDGE_LOOP - (j-rightHandleVertStart)
+                loopOpenings[j] = [RIGHT_OPENING_ID, openingIndex, HALF_VERTICES_PER_EDGE_LOOP]
+            # left side of left handle
+            elif leftHandleVertStart <= j <= leftHandleVertEnd:
+                openingIndex = 0
+                if j < leftHandleVertEnd:
+                    openingIndex = HALF_VERTICES_PER_EDGE_LOOP*3/4 + (j-leftHandleVertStart)
+                loopOpenings[j] = [LEFT_OPENING_ID, openingIndex, HALF_VERTICES_PER_EDGE_LOOP]
 
-        # # edge-edge-edge-edge-edge
-        # if i==0:
-        #     if rightHandleVertStart <= j <= rightHandleVertEnd or leftHandleVertStart <= j <= leftHandleVertEnd:
-        #         loop[j] = v # TODO
-        # # edge-edge-edge-edge-edge
-        # elif i >= lerpCount-1:
-        #     if rightHandleVertStart <= j <= rightHandleVertEnd or leftHandleVertStart <= j <= leftHandleVertEnd:
-        #         loop[j] = v # TODO
-        # # edge-hole-hole-hole-edge
-        # else:
-        #     # this is a hole
-        #     if rightHandleVertStart < j < rightHandleVertEnd or leftHandleVertStart < j < leftHandleVertEnd:
-        #         loop[j] = False
-        #
-        #     # this is the edge
-        #     if j==rightHandleVertStart:
-        #         loop[j] = v # TODO
-        #     elif j==rightHandleVertEnd:
-        #         loop[j] = v # TODO
-        #     elif j==leftHandleVertStart:
-        #         loop[j] = v # TODO
-        #     elif j==leftHandleVertEnd:
-        #         loop[j] = v # TODO
+        # inner edge-edge-edge-edge-edge
+        elif i >= lerpCount-1:
+            # left side of right handle (flipped)
+            if rightHandleVertStart <= j <= rightHandleVertEnd:
+                openingIndex = HALF_VERTICES_PER_EDGE_LOOP/4 + (j-rightHandleVertStart)
+                loopOpenings[j] = [RIGHT_OPENING_ID, openingIndex, HALF_VERTICES_PER_EDGE_LOOP]
+            # right side of left handle
+            elif leftHandleVertStart <= j <= leftHandleVertEnd:
+                openingIndex = HALF_VERTICES_PER_EDGE_LOOP/2 - (j-leftHandleVertStart)
+                loopOpenings[j] = [LEFT_OPENING_ID, openingIndex, HALF_VERTICES_PER_EDGE_LOOP]
 
-    mesh.addEdgeLoop(loop)
+        # edge-hole-hole-hole-edge
+        else:
+            # this is a hole
+            if (rightHandleVertStart < j < rightHandleVertEnd or leftHandleVertStart < j < leftHandleVertEnd):
+                loop[j] = False
+                loopOpenings[j] = False
+
+            # top of right handle (flipped)
+            if j==rightHandleVertStart:
+                openingIndex = i
+                loopOpenings[j] = [RIGHT_OPENING_ID, openingIndex, HALF_VERTICES_PER_EDGE_LOOP]
+
+            # bottom of right handle (flipped)
+            elif j==rightHandleVertEnd:
+                openingIndex = HALF_VERTICES_PER_EDGE_LOOP*3/4-i
+                loopOpenings[j] = [RIGHT_OPENING_ID, openingIndex, HALF_VERTICES_PER_EDGE_LOOP]
+
+            # bottom of left handle
+            elif j==leftHandleVertStart:
+                openingIndex = HALF_VERTICES_PER_EDGE_LOOP*3/4-i
+                loopOpenings[j] = [LEFT_OPENING_ID, openingIndex, HALF_VERTICES_PER_EDGE_LOOP]
+
+            # top of left handle
+            elif j==leftHandleVertEnd:
+                openingIndex = i
+                loopOpenings[j] = [LEFT_OPENING_ID, openingIndex, HALF_VERTICES_PER_EDGE_LOOP]
+
+    mesh.addEdgeLoop(loop, loopOpenings)
 
 # build the top hole of the pot
 for i,p in enumerate(POT_TOP):
@@ -385,10 +413,13 @@ HANDLE_RIGHT = [
 # build the mesh
 hmesh = Mesh()
 
-for h in HANDLE_LEFT:
+for i, h in enumerate(HANDLE_LEFT):
     x, y, z, c = h
     loop = roundedRect(HANDLE_VERTICES_PER_EDGE_LOOP, c, x, y, z, HANDLE_EDGE_RADIUS)
-    hmesh.addEdgeLoop(loop)
+    loopOpening = False
+    if i==0:
+        loopOpening = [[LEFT_OPENING_ID, j, HANDLE_VERTICES_PER_EDGE_LOOP] for j, v in enumerate(loop)]
+    hmesh.addEdgeLoop(loop, loopOpening)
 
 for h in HANDLE_TOP:
     x, y, z, c, t = h
@@ -399,13 +430,19 @@ for h in HANDLE_TOP:
     loop = rotateY(loop, c, 90.0)
     hmesh.addEdgeLoop(loop)
 
-for h in HANDLE_RIGHT:
+for i, h in enumerate(HANDLE_RIGHT):
     x, y, z, c = h
     loop = roundedRect(HANDLE_VERTICES_PER_EDGE_LOOP, c, x, y, z, HANDLE_EDGE_RADIUS)
     loop = rotateY(loop, c, 180.0)
-    hmesh.addEdgeLoop(loop)
+    loopOpening = False
+    if i>=len(HANDLE_RIGHT)-1:
+        loopOpening = [[RIGHT_OPENING_ID, j, HANDLE_VERTICES_PER_EDGE_LOOP] for j, v in enumerate(loop)]
+    hmesh.addEdgeLoop(loop, loopOpening)
 
 hmesh.processEdgeloops()
+
+# connect the main mesh to the handle mesh
+mesh.joinMesh(hmesh, [(LEFT_OPENING_ID, False), (RIGHT_OPENING_ID, True)])
 
 # config for spout
 SPOUT_VERTICES_PER_EDGE_LOOP = HANDLE_VERTICES_PER_EDGE_LOOP
@@ -460,13 +497,14 @@ data = [
         "location": CENTER,
         "flipFaces": range((VERTICES_PER_EDGE_LOOP/4)**2)
     }
+    # ,{
+    #     "name": "Handle",
+    #     "verts": roundP(hmesh.verts, PRECISION),
+    #     "edges": [],
+    #     "faces": hmesh.faces,
+    #     "location": (0.0, 0.0, 0.0)
+    # }
     ,{
-        "name": "Handle",
-        "verts": roundP(hmesh.verts, PRECISION),
-        "edges": [],
-        "faces": hmesh.faces,
-        "location": (0.0, 0.0, 0.0)
-    },{
         "name": "Spout",
         "verts": roundP(smesh.verts, PRECISION),
         "edges": [],

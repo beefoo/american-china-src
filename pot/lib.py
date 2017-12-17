@@ -395,8 +395,13 @@ class Mesh:
         self.faces = []
         self.edgeLoops = []
 
-    def addEdgeLoop(self, loop):
+        self.edgeLoopOpenings = []
+        self.vertOpenings = []
+        self.openings = {}
+
+    def addEdgeLoop(self, loop, loopOpenings=False):
         self.edgeLoops.append(loop)
+        self.edgeLoopOpenings.append(loopOpenings)
 
     def addEdgeLoops(self, loops):
         for loop in loops:
@@ -464,6 +469,58 @@ class Mesh:
 
         self.faces += faces
 
+    # join another mesh to this mesh
+    def joinMesh(self, otherMesh, openingIds):
+        otherVerts = otherMesh.verts[:]
+        otherFaces = otherMesh.faces[:]
+        otherOpenings = otherMesh.openings.copy()
+        thisOpenings = self.openings
+        offset = len(self.verts)
+
+        # add other verts to this mesh
+        self.verts += otherVerts
+
+        # offset other faces and add to this mesh
+        for i, face in enumerate(otherFaces):
+            otherFace = []
+            for j, vIndex in enumerate(face):
+                otherFace.append(vIndex + offset)
+            otherFaces[i] = tuple(otherFace)
+        self.faces += otherFaces
+
+        # offset other openings
+        for openingId in otherOpenings:
+            for j, vIndex in enumerate(otherOpenings[openingId]):
+                otherOpenings[openingId][j] = vIndex + offset
+
+        # join the meshes on the openings
+        newFaces = []
+        for o in openingIds:
+            openingId = o[0]
+            reverse = o[1]
+            openingA = thisOpenings[openingId][:]
+            openingB = otherOpenings[openingId][:]
+            openingLen = len(openingA)
+
+            if reverse:
+                openingA = otherOpenings[openingId][:]
+                openingB = thisOpenings[openingId][:]
+
+            for j, vIndex in enumerate(openingA):
+                v1 = j
+                v2 = j + 1
+                v3 = j + 1
+                v4 = j
+                if v2 >= openingLen:
+                    v2 = 0
+                    v3 = 0
+                v1 = openingA[v1]
+                v2 = openingA[v2]
+                v3 = openingB[v3]
+                v4 = openingB[v4]
+                newFaces.append((v1, v2, v3, v4))
+        self.faces += newFaces
+
     # join all the edge loop together
     def processEdgeloops(self):
         indexOffset = 0
@@ -471,6 +528,12 @@ class Mesh:
         for i, edgeLoop in enumerate(self.edgeLoops):
             # add loop's vertices
             self.verts += edgeLoop
+
+            edgeLoopOpening = self.edgeLoopOpenings[i]
+            if edgeLoopOpening is False:
+                self.vertOpenings += [True for v in edgeLoop]
+            else:
+                self.vertOpenings += edgeLoopOpening
 
             # if this is the first edge loop and it's a quad, add it's face
             if i == 0 and len(edgeLoop) == 4:
@@ -498,9 +561,23 @@ class Mesh:
         self.faces = [f for f in self.faces if len(f)==4 and False not in [verts[f[0]], verts[f[1]], verts[f[2]], verts[f[3]]]]
         # remove "False" vertices
         self.verts = [v for v in verts if v is not False]
+        self.vertOpenings = [v for v in self.vertOpenings if v is not False]
         # update faces with new indices
         for i, f in enumerate(self.faces):
             tup = []
             for j, vIndex in enumerate(f):
                 tup.append(vIndex - offsets[vIndex])
             self.faces[i] = tuple(tup)
+
+        # populate openings
+        openings = {}
+        for i, v in enumerate(self.vertOpenings):
+            if v is not True:
+                vId = v[0]
+                vIndex = v[1]
+                vTotal = v[2]
+                if vId not in openings:
+                    openings[vId] = [-1 for vv in range(vTotal)]
+                openings[vId][vIndex] = i
+        self.openings = openings
+        # pprint(openings)
