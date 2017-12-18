@@ -447,9 +447,8 @@ mesh.joinMesh(hmesh, [(LEFT_OPENING_ID, False), (RIGHT_OPENING_ID, True)])
 # config for spout
 SPOUT_VERTICES_PER_EDGE_LOOP = HANDLE_VERTICES_PER_EDGE_LOOP
 SPOUT_EDGE = EDGE_RADIUS
-SPOUT_INNER_WIDTH = 6.0
+SPOUT_INNER_WIDTH = 10.0
 SPOUT_INNER_HEIGHT = 12.0
-SPOUT_CORNER_RADIUS = 2.0
 SPOUT_THICKNESS = 4.0
 SPOUT_WIDTH = SPOUT_INNER_WIDTH + SPOUT_THICKNESS*2
 SPOUT_HEIGHT = SPOUT_INNER_HEIGHT + SPOUT_THICKNESS*2
@@ -475,6 +474,29 @@ SPOUT = [
     (SPOUT_INNER_WIDTH, SPOUT_INNER_HEIGHT, SPOUT_CENTER_HEIGHT, (SPOUT_INNER_X, 0, SPOUT_CENTER_HEIGHT)), # inner
 ]
 
+SPOUT_POINT_Y = 0.05
+SPOUT_POINT_X = 0.05
+SPOUT_MID_Y = (0.5 + SPOUT_POINT_Y) * 0.5
+SPOUT_MID_X = (0.5 + SPOUT_POINT_X) * 0.5
+SPOUT_SHAPE = [
+    (0.5-SPOUT_MID_X, 0.5-SPOUT_MID_Y),
+    (0.5-SPOUT_POINT_X, 0.0),
+    (0.5, 0.0),                   # top middle point
+    (0.5+SPOUT_POINT_X, 0.0),
+    (0.5+SPOUT_MID_X, 0.5-SPOUT_MID_Y),
+    (1.0, 0.5-SPOUT_POINT_Y),        # top right point
+    (1.0, 0.5),                  # middle right point
+    (1.0, 0.5+SPOUT_POINT_Y),    # bottom right point
+    (0.5+SPOUT_MID_X, 0.5+SPOUT_MID_Y),
+    (0.5+SPOUT_POINT_X, 1.0),
+    (0.5, 1.0),                  # bottom middle point
+    (0.5-SPOUT_POINT_X, 1.0),
+    (0.5-SPOUT_MID_X, 0.5+SPOUT_MID_Y),
+    (0.0, 0.5+SPOUT_POINT_Y),    # bottom left point
+    (0.0, 0.5),                  # middle left point
+    (0.0, 0.5-SPOUT_POINT_Y),        # top left point
+]
+
 # build the mesh
 smesh = Mesh()
 
@@ -484,7 +506,7 @@ for h in SPOUT:
         x, y, z, c, r = h
     else:
         x, y, z, c = h
-    loop = roundedRect(SPOUT_VERTICES_PER_EDGE_LOOP, c, x, y, z, SPOUT_CORNER_RADIUS)
+    loop = shape(SPOUT_SHAPE, x, y, SPOUT_VERTICES_PER_EDGE_LOOP, c, z)
     loop = rotateY(loop, c, -90.0+r)
     loop = rotateY(loop, SPOUT_ROTATE_CENTER, SPOUT_ROTATE)
     loop = translateLoop(loop, SPOUT_TRANSLATE)
