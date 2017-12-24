@@ -52,7 +52,7 @@ ER2 = EDGE_RADIUS*2
 print "Check: %s > %s" % (BODY_BASE_HEIGHT-EDGE_RADIUS, EDGE_RADIUS)
 
 # define pot: x, y, z
-POT_OUTER = [
+POT_OUTER_A = [
     (BASE_INSET_L-ER2, BASE_INSET_W-ER2, BASE_INSET_HEIGHT),                     # base inset edge
     (BASE_INSET_L, BASE_INSET_W, BASE_INSET_HEIGHT),                             # base inset
     (BASE_INSET_L, BASE_INSET_W, 0),                                             # base inner
@@ -65,12 +65,16 @@ POT_OUTER = [
     # (LENGTH*BODY_BTM, WIDTH*BODY_BTM, BODY_BASE_HEIGHT),                         # body bottom
     (LENGTH*BODY_BTM, WIDTH*BODY_BTM, BODY_BASE_HEIGHT+EDGE_RADIUS),             # body bottom edge after
     (LENGTH*BODY_BTM, WIDTH*BODY_BTM, BODY_BASE_HEIGHT+ER2),                     # body bottom edge after edge
+]
+# Insert spout outer hole here
+POT_OUTER_B = [
     # (LENGTH*BODY_TOP, WIDTH*BODY_TOP, BODY_HEIGHT-EDGE_RADIUS),                  # body top edge before
     (LENGTH*BODY_TOP, WIDTH*BODY_TOP, BODY_HEIGHT-BODY_TOP_INSET_HEIGHT, OUTER_TOP_CENTER),               # body top
     (LENGTH*BODY_TOP_INSET, WIDTH*BODY_TOP_INSET, BODY_HEIGHT-BODY_TOP_INSET_HEIGHT, OUTER_TOP_CENTER),   # body top inset bottom
     (LENGTH*BODY_TOP_INSET, WIDTH*BODY_TOP_INSET, BODY_HEIGHT, OUTER_TOP_CENTER),                         # body top inset top
     (LENGTH*BODY_TOP_INSET-EDGE_RADIUS, WIDTH*BODY_TOP_INSET-EDGE_RADIUS, BODY_HEIGHT, OUTER_TOP_CENTER),          # body top inset top
 ]
+POT_OUTER = POT_OUTER_A + POT_OUTER_B
 print "Top inset length: %scm" % (LENGTH*BODY_TOP_INSET*0.1)
 
 TOP_HOLE_EDGE = 4.0
@@ -92,13 +96,17 @@ POT_TOP = [
 
 INNER_BODY_TOP = TOP_HOLE_INNER_HEIGHT
 INNER_BODY_BOTTOM = BODY_BASE_HEIGHT
-POT_INNER = [
+POT_INNER_A = [
     (LENGTH*BODY_TOP-T2-ER2, WIDTH*BODY_TOP-T2-ER2, INNER_BODY_TOP, INNER_TOP_CENTER),     # inner body top edge
     (LENGTH*BODY_TOP-T2, WIDTH*BODY_TOP-T2, INNER_BODY_TOP, INNER_TOP_CENTER),             # inner body top
+]
+# Insert spout inner hole here
+POT_INNER_B = [
     (LENGTH*BODY_BTM-T2, WIDTH*BODY_BTM-T2, INNER_BODY_BOTTOM+ER2*2),     # inner body bottom edge before
     (LENGTH*BODY_BTM-T2, WIDTH*BODY_BTM-T2, INNER_BODY_BOTTOM),                 # inner body bottom
     (LENGTH*BODY_BTM-T2-ER2*4, WIDTH*BODY_BTM-T2-ER2*4, INNER_BODY_BOTTOM),         # inner body bottom edge after
 ]
+POT_INNER = POT_INNER_A + POT_INNER_B
 potInnerLen = len(POT_INNER)
 
 # Define the shape of the cross-section of the iron, clock-wise starting from top left
@@ -159,6 +167,94 @@ SHAPE_HOLE = [
     (0.0, 0.5),             # middle left (point of iron)
     (0.0, HOLE_NOSE_POINT_Y),# top nose point
 ]
+
+# config for spout
+SPOUT_VERTICES_PER_EDGE_LOOP = HALF_VERTICES_PER_EDGE_LOOP
+SPOUT_EDGE = 3.0
+SPOUT_INNER_WIDTH = 12.0
+SPOUT_INNER_HEIGHT = 12.0
+SPOUT_THICKNESS = 4.0
+SPOUT_WIDTH = SPOUT_INNER_WIDTH + SPOUT_THICKNESS*2
+SPOUT_HEIGHT = SPOUT_INNER_HEIGHT + SPOUT_THICKNESS*2
+SPOUT_CENTER_HEIGHT = BODY_HEIGHT * 0.667
+SPOUT_TO_X = -(LENGTH*1.08)*0.5 # increase multiplier to make longer
+SPOUT_FROM_X = -(LENGTH*0.8125)*0.5 # increase multiplier to move outer spout away from pot body
+SPOUT_INNER_X = SPOUT_FROM_X*0.925 # adjust this to be in-between inner and outer pot body
+
+SPOUT_ROTATE = 50.0
+SPOUT_ROTATE_CENTER = ((SPOUT_FROM_X + SPOUT_TO_X) * 0.5, 0.0, SPOUT_CENTER_HEIGHT)
+SPOUT_TRANSLATE = (0.0, 0.0, 6.0)
+SPOUT_START_ROTATE = -1.0 * (SPOUT_ROTATE-25.0)
+SPOUT_END_ROTATE = SPOUT_ROTATE - 20.0
+
+# x, y, z, center
+SPOUT = [
+    (SPOUT_WIDTH, SPOUT_HEIGHT, SPOUT_CENTER_HEIGHT, (SPOUT_FROM_X, 0, SPOUT_CENTER_HEIGHT), SPOUT_START_ROTATE), # outer start
+    (SPOUT_WIDTH, SPOUT_HEIGHT, SPOUT_CENTER_HEIGHT, (SPOUT_FROM_X-SPOUT_EDGE, 0, SPOUT_CENTER_HEIGHT), SPOUT_START_ROTATE), # outer start edge
+    (SPOUT_WIDTH, SPOUT_HEIGHT, SPOUT_CENTER_HEIGHT, (SPOUT_TO_X+SPOUT_EDGE, 0, SPOUT_CENTER_HEIGHT), SPOUT_END_ROTATE), # outer end edge
+    (SPOUT_WIDTH, SPOUT_HEIGHT, SPOUT_CENTER_HEIGHT, (SPOUT_TO_X, 0, SPOUT_CENTER_HEIGHT), SPOUT_END_ROTATE), # outer end
+    (SPOUT_INNER_WIDTH, SPOUT_INNER_HEIGHT, SPOUT_CENTER_HEIGHT, (SPOUT_TO_X, 0, SPOUT_CENTER_HEIGHT), SPOUT_END_ROTATE), # inner end
+    (SPOUT_INNER_WIDTH, SPOUT_INNER_HEIGHT, SPOUT_CENTER_HEIGHT, (SPOUT_TO_X+SPOUT_EDGE, 0, SPOUT_CENTER_HEIGHT), SPOUT_END_ROTATE), # inner end edge
+    (SPOUT_INNER_WIDTH, SPOUT_INNER_HEIGHT, SPOUT_CENTER_HEIGHT, (SPOUT_INNER_X-SPOUT_EDGE, 0, SPOUT_CENTER_HEIGHT), SPOUT_START_ROTATE), # inner edge
+    (SPOUT_INNER_WIDTH, SPOUT_INNER_HEIGHT, SPOUT_CENTER_HEIGHT, (SPOUT_INNER_X, 0, SPOUT_CENTER_HEIGHT), SPOUT_START_ROTATE), # inner
+]
+
+SPOUT_POINT_Y = 0.05
+SPOUT_POINT_X = 0.05
+SPOUT_MID_Y = (0.5 + SPOUT_POINT_Y) * 0.5
+SPOUT_MID_X = (0.5 + SPOUT_POINT_X) * 0.5
+SPOUT_SHAPE = [
+    (0.5-SPOUT_MID_X, 0.5-SPOUT_MID_Y),
+    (0.5-SPOUT_POINT_X, 0.0),
+    (0.5, 0.0),                   # top middle point
+    (0.5+SPOUT_POINT_X, 0.0),
+    (0.5+SPOUT_MID_X, 0.5-SPOUT_MID_Y),
+    (1.0, 0.5-SPOUT_POINT_Y),        # top right point
+    (1.0, 0.5),                  # middle right point
+    (1.0, 0.5+SPOUT_POINT_Y),    # bottom right point
+    (0.5+SPOUT_MID_X, 0.5+SPOUT_MID_Y),
+    (0.5+SPOUT_POINT_X, 1.0),
+    (0.5, 1.0),                  # bottom middle point
+    (0.5-SPOUT_POINT_X, 1.0),
+    (0.5-SPOUT_MID_X, 0.5+SPOUT_MID_Y),
+    (0.0, 0.5+SPOUT_POINT_Y),    # bottom left point
+    (0.0, 0.5),                  # middle left point
+    (0.0, 0.5-SPOUT_POINT_Y),        # top left point
+]
+
+# # interpolate outer pot to accommodate hole for spout
+# def lerpBetweenLoopGroups(a, b, sampleSize, centerZ, heightZ):
+#     lenSample = min([len(a), len(b)])
+#     sample = a[-lenSample:] + b[:lenSample]
+#     xs = [d[0] for d in sample]
+#     ys = [d[1] for d in sample]
+#     zs = [d[2] for d in sample]
+#     xSplined = bspline(xs, n=1000, periodic=False)
+#     ySplined = bspline(ys, n=1000, periodic=False)
+#     zSplined = bspline(zs, n=1000, periodic=False)
+#     z0 = centerZ - heightZ*0.5
+#     z1 = centerZ + heightZ*0.5
+#     zDelta = zs[-1] - zs[0]
+#     direction = zDelta / abs(zDelta)
+#     if direction < 0:
+#         zt = z0
+#         z0 = z1
+#         z1 = zt
+#     zStartIndex = False
+#     zEndIndex = False
+#     for i, z in enumerate(zSplined):
+#         if zStartIndex is False and (z >= z0 and direction >= 0 or z <= z0 and direction < 0):
+#             zStartIndex = i
+#         elif zStartIndex is not False and zEndIndex is False and (z > z1 and direction >= 0 or z < z1 and direction < 0):
+#             zEndIndex = i - 1
+#     print zStartIndex
+#     print zEndIndex
+#     for i in range(sampleSize):
+#         percent = 1.0 * i / (sampleSize-1)
+
+# sampleSize = HALF_VERTICES_PER_EDGE_LOOP/4 + 1 + 2 + 2
+# outerSpoutLoops = lerpBetweenLoopGroups(POT_OUTER_A, POT_OUTER_B, sampleSize, centerZ=SPOUT_CENTER_HEIGHT, heightZ=SPOUT_HEIGHT)
+# sys.exit(1)
 
 # build the mesh
 mesh = Mesh()
@@ -443,59 +539,6 @@ hmesh.processEdgeloops()
 
 # connect the main mesh to the handle mesh
 mesh.joinMesh(hmesh, [(LEFT_OPENING_ID, False), (RIGHT_OPENING_ID, True)])
-
-# config for spout
-SPOUT_VERTICES_PER_EDGE_LOOP = HANDLE_VERTICES_PER_EDGE_LOOP
-SPOUT_EDGE = EDGE_RADIUS
-SPOUT_INNER_WIDTH = 10.0
-SPOUT_INNER_HEIGHT = 12.0
-SPOUT_THICKNESS = 4.0
-SPOUT_WIDTH = SPOUT_INNER_WIDTH + SPOUT_THICKNESS*2
-SPOUT_HEIGHT = SPOUT_INNER_HEIGHT + SPOUT_THICKNESS*2
-SPOUT_CENTER_HEIGHT = BODY_HEIGHT - SPOUT_HEIGHT * 0.5
-SPOUT_TO_X = -LENGTH*0.5
-SPOUT_FROM_X = -(LENGTH*BODY_TOP-T2)*0.5 # TODO: define this based on body
-SPOUT_INNER_X = -(LENGTH*BODY_TOP-T2)*0.455 # TODO: define this based on body
-
-SPOUT_ROTATE = 30.0
-SPOUT_ROTATE_CENTER = ((SPOUT_FROM_X + SPOUT_TO_X) * 0.5, 0.0, SPOUT_CENTER_HEIGHT)
-SPOUT_TRANSLATE = (0.0, 0.0, 6.0)
-SPOUT_END_ROTATE = 25.0
-
-# x, y, z, center
-SPOUT = [
-    (SPOUT_WIDTH, SPOUT_HEIGHT, SPOUT_CENTER_HEIGHT, (SPOUT_FROM_X, 0, SPOUT_CENTER_HEIGHT)), # outer start
-    (SPOUT_WIDTH, SPOUT_HEIGHT, SPOUT_CENTER_HEIGHT, (SPOUT_FROM_X-SPOUT_EDGE, 0, SPOUT_CENTER_HEIGHT)), # outer start edge
-    (SPOUT_WIDTH, SPOUT_HEIGHT, SPOUT_CENTER_HEIGHT, (SPOUT_TO_X+SPOUT_EDGE, 0, SPOUT_CENTER_HEIGHT), SPOUT_END_ROTATE), # outer end edge
-    (SPOUT_WIDTH, SPOUT_HEIGHT, SPOUT_CENTER_HEIGHT, (SPOUT_TO_X, 0, SPOUT_CENTER_HEIGHT), SPOUT_END_ROTATE), # outer end
-    (SPOUT_INNER_WIDTH, SPOUT_INNER_HEIGHT, SPOUT_CENTER_HEIGHT, (SPOUT_TO_X, 0, SPOUT_CENTER_HEIGHT), SPOUT_END_ROTATE), # inner end
-    (SPOUT_INNER_WIDTH, SPOUT_INNER_HEIGHT, SPOUT_CENTER_HEIGHT, (SPOUT_TO_X+SPOUT_EDGE, 0, SPOUT_CENTER_HEIGHT), SPOUT_END_ROTATE), # inner end edge
-    (SPOUT_INNER_WIDTH, SPOUT_INNER_HEIGHT, SPOUT_CENTER_HEIGHT, (SPOUT_INNER_X-SPOUT_EDGE, 0, SPOUT_CENTER_HEIGHT)), # inner edge
-    (SPOUT_INNER_WIDTH, SPOUT_INNER_HEIGHT, SPOUT_CENTER_HEIGHT, (SPOUT_INNER_X, 0, SPOUT_CENTER_HEIGHT)), # inner
-]
-
-SPOUT_POINT_Y = 0.05
-SPOUT_POINT_X = 0.05
-SPOUT_MID_Y = (0.5 + SPOUT_POINT_Y) * 0.5
-SPOUT_MID_X = (0.5 + SPOUT_POINT_X) * 0.5
-SPOUT_SHAPE = [
-    (0.5-SPOUT_MID_X, 0.5-SPOUT_MID_Y),
-    (0.5-SPOUT_POINT_X, 0.0),
-    (0.5, 0.0),                   # top middle point
-    (0.5+SPOUT_POINT_X, 0.0),
-    (0.5+SPOUT_MID_X, 0.5-SPOUT_MID_Y),
-    (1.0, 0.5-SPOUT_POINT_Y),        # top right point
-    (1.0, 0.5),                  # middle right point
-    (1.0, 0.5+SPOUT_POINT_Y),    # bottom right point
-    (0.5+SPOUT_MID_X, 0.5+SPOUT_MID_Y),
-    (0.5+SPOUT_POINT_X, 1.0),
-    (0.5, 1.0),                  # bottom middle point
-    (0.5-SPOUT_POINT_X, 1.0),
-    (0.5-SPOUT_MID_X, 0.5+SPOUT_MID_Y),
-    (0.0, 0.5+SPOUT_POINT_Y),    # bottom left point
-    (0.0, 0.5),                  # middle left point
-    (0.0, 0.5-SPOUT_POINT_Y),        # top left point
-]
 
 # build the mesh
 smesh = Mesh()
