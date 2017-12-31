@@ -102,12 +102,11 @@ POT_INNER_A = [
 ]
 # Insert spout inner hole here
 POT_INNER_B = [
-    (LENGTH*BODY_BTM-T2, WIDTH*BODY_BTM-T2, INNER_BODY_BOTTOM+ER2*2),     # inner body bottom edge before
-    (LENGTH*BODY_BTM-T2, WIDTH*BODY_BTM-T2, INNER_BODY_BOTTOM),                 # inner body bottom
-    (LENGTH*BODY_BTM-T2-ER2*4, WIDTH*BODY_BTM-T2-ER2*4, INNER_BODY_BOTTOM),         # inner body bottom edge after
+    (LENGTH*BODY_BTM-T2, WIDTH*BODY_BTM-T2, INNER_BODY_BOTTOM+ER2, CENTER),     # inner body bottom edge before
+    (LENGTH*BODY_BTM-T2, WIDTH*BODY_BTM-T2, INNER_BODY_BOTTOM, CENTER),                 # inner body bottom
+    (LENGTH*BODY_BTM-T2-ER2*4, WIDTH*BODY_BTM-T2-ER2*4, INNER_BODY_BOTTOM, CENTER),         # inner body bottom edge after
 ]
-POT_INNER = POT_INNER_A + POT_INNER_B
-potInnerLen = len(POT_INNER)
+# POT_INNER = POT_INNER_A + POT_INNER_B
 
 # Define the shape of the cross-section of the iron, clock-wise starting from top left
 EDGE_X = EDGE_RADIUS / LENGTH
@@ -222,66 +221,36 @@ SPOUT_SHAPE = [
     (0.0, 0.5-SPOUT_POINT_Y),        # top left point
 ]
 
-# interpolate outer pot to accommodate hole for spout
-def lerpBetweenLoopGroups(a, b, sampleSize, centerZ, heightZ):
-    lenSample = min([len(a), len(b)])
-    sample = a[-lenSample:] + b[:lenSample]
-    xs = [d[0] for d in sample]
-    ys = [d[1] for d in sample]
-    zs = [d[2] for d in sample]
-    cs = [d[3] for d in sample]
-    xSplined = bspline(xs, n=1000, periodic=False)
-    ySplined = bspline(ys, n=1000, periodic=False)
-    zSplined = bspline(zs, n=1000, periodic=False)
-    cSplined = bspline(cs, n=1000, periodic=False)
-    z0 = centerZ - heightZ*0.5
-    z1 = centerZ + heightZ*0.5
-    zDelta = zs[-1] - zs[0]
-    direction = zDelta / abs(zDelta)
-    if direction < 0:
-        zt = z0
-        z0 = z1
-        z1 = zt
-    zStartIndex = False
-    zEndIndex = False
-    for i, z in enumerate(zSplined):
-        if zStartIndex is False and (z >= z0 and direction >= 0 or z <= z0 and direction < 0):
-            zStartIndex = i
-        elif zStartIndex is not False and zEndIndex is False and (z > z1 and direction >= 0 or z < z1 and direction < 0):
-            zEndIndex = i - 1
-    lerped = []
-    for i in range(sampleSize):
-        percent = 1.0 * i / (sampleSize-1)
-        index = lerp(zStartIndex, zEndIndex, percent)
-        index = int(round(index))
-        x = xSplined[index]
-        y = ySplined[index]
-        z = zSplined[index]
-        c = cSplined[index]
-        lerped.append((x, y, z, c))
-    return lerped
-
 sampleSize = HALF_VERTICES_PER_EDGE_LOOP/4 + 1 + 2
-outerSpoutLoops = lerpBetweenLoopGroups(POT_OUTER_A, POT_OUTER_B, sampleSize, centerZ=SPOUT_CENTER_HEIGHT, heightZ=SPOUT_HEIGHT)
-POT_OUTER = POT_OUTER_A + outerSpoutLoops + POT_OUTER_B
+outerSpoutCenterZ = SPOUT_CENTER_HEIGHT * 0.95
+# outerSpoutLoops = splineBetweenLoopGroups(POT_OUTER_A, POT_OUTER_B, sampleSize, centerZ=outerSpoutCenterZ, heightZ=SPOUT_HEIGHT)
+outerSpoutLoops = lerpBetweenLoops(POT_OUTER_A[-1], POT_OUTER_B[0], sampleSize, centerZ=outerSpoutCenterZ, heightZ=SPOUT_HEIGHT)
+
+innerSpoutCenterZ = outerSpoutCenterZ * 0.95
+innerSpoutLoops = lerpBetweenLoops(POT_INNER_A[-1], POT_INNER_B[0], sampleSize, centerZ=innerSpoutCenterZ, heightZ=SPOUT_HEIGHT)
 
 # build the mesh
 mesh = Mesh()
 
 # build the outer pot
-for i,p in enumerate(POT_OUTER):
-    if len(p)==4:
-        x, y, z, center = p
-    else:
-        x, y, z = p
-        center = CENTER
-
+for i,p in enumerate(POT_OUTER_A):
+    x, y, z, center = p
     if i <= 0:
         loops = shapeMesh(SHAPE, x, y, VERTICES_PER_EDGE_LOOP, center, z)
         mesh.addEdgeLoops(loops)
     else:
         loop = shape(SHAPE, x, y, VERTICES_PER_EDGE_LOOP, center, z)
         mesh.addEdgeLoop(loop)
+
+for i,p in enumerate(outerSpoutLoops):
+    x, y, z, center = p
+    loop = shape(SHAPE, x, y, VERTICES_PER_EDGE_LOOP, center, z)
+    mesh.addEdgeLoop(loop)
+
+for i,p in enumerate(POT_OUTER_B):
+    x, y, z, center = p
+    loop = shape(SHAPE, x, y, VERTICES_PER_EDGE_LOOP, center, z)
+    mesh.addEdgeLoop(loop)
 
 # config for handle
 HANDLE_VERTICES_PER_EDGE_LOOP = BASE_VERTICES * 2**(SUBDIVIDE_X-1)
@@ -445,15 +414,20 @@ for i,p in enumerate(POT_TOP):
     loop = shape(SHAPE_HOLE, x, y, VERTICES_PER_EDGE_LOOP, TOP_CENTER, z)
     mesh.addEdgeLoop(loop)
 
-
 # build the inner pot
-for i,p in enumerate(POT_INNER):
-    if len(p)==4:
-        x, y, z, center = p
-    else:
-        x, y, z = p
-        center = CENTER
+for i,p in enumerate(POT_INNER_A):
+    x, y, z, center = p
+    loop = shape(SHAPE, x, y, VERTICES_PER_EDGE_LOOP, center, z)
+    mesh.addEdgeLoop(loop)
 
+for i,p in enumerate(innerSpoutLoops):
+    x, y, z, center = p
+    loop = shape(SHAPE, x, y, VERTICES_PER_EDGE_LOOP, center, z)
+    mesh.addEdgeLoop(loop)
+
+potInnerLen = len(POT_INNER_B)
+for i,p in enumerate(POT_INNER_B):
+    x, y, z, center = p
     if i >= potInnerLen-1:
         loops = shapeMesh(SHAPE, x, y, VERTICES_PER_EDGE_LOOP, center, z, True)
         mesh.addEdgeLoops(loops)

@@ -44,6 +44,15 @@ def bspline(cv, n=100, degree=3, periodic=True):
     # Calculate result
     return np.array(interpolate.splev(u, (kv,cv.T,degree))).T.tolist()
 
+def bsplineShape(points, vertices):
+    points = bspline(points, n=vertices+1, periodic=True)
+    points = points[:-1]
+    offset = vertices / 8
+    a = points[(vertices-offset):]
+    b = points[:(vertices-offset)]
+    points = a + b
+    return points
+
 def ellipse(vertices, center, r1, r2, z):
     verts = []
     edgesPerSide = vertices / 4
@@ -147,6 +156,31 @@ def ellipseMesh(vertices, center, r1, r2, z, reverse=False):
 
 def lerp(a, b, mu):
     return (b-a) * mu + a
+
+def lerpBetweenLoops(a, b, sampleSize, centerZ, heightZ):
+    aX, aY, aZ, aC = a
+    bX, bY, bZ, bC = b
+    z0 = centerZ - heightZ*0.5
+    z1 = centerZ + heightZ*0.5
+    zDelta = bZ - aZ
+    direction = zDelta / abs(zDelta)
+    if direction < 0:
+        zt = z0
+        z0 = z1
+        z1 = zt
+        # print "%s > %s > %s > %s" % (aZ, z0, z1, bZ)
+    p0 = norm(z0, aZ, bZ)
+    p1 = norm(z1, aZ, bZ)
+    lerped = []
+    for i in range(sampleSize):
+        percent = 1.0 * i / (sampleSize-1)
+        p = lerp(p0, p1, percent)
+        x = lerp(aX, bX, p)
+        y = lerp(aY, bY, p)
+        z = lerp(aZ, bZ, p)
+        c = (lerp(aC[0], bC[0], p), lerp(aC[1], bC[1], p), lerp(aC[2], bC[2], p))
+        lerped.append((x, y, z, c))
+    return lerped
 
 def lerpEdgeloop(l1, l2, mu):
     lerpedEdgeloop = []
@@ -261,15 +295,6 @@ def roundP(vList, precision):
         rounded.append(t)
     return rounded
 
-def bsplineShape(points, vertices):
-    points = bspline(points, n=vertices+1, periodic=True)
-    points = points[:-1]
-    offset = vertices / 8
-    a = points[(vertices-offset):]
-    b = points[:(vertices-offset)]
-    points = a + b
-    return points
-
 def shape(points, width, height, vertices, center, z):
     loop = []
     hw = width * 0.5
@@ -372,6 +397,45 @@ def shapeMesh(points, width, height, vertices, center, z, reverse=False):
         edgeLoops = reversed(edgeLoops)
 
     return edgeLoops
+
+# interpolate outer pot to accommodate hole for spout
+def splineBetweenLoopGroups(a, b, sampleSize, centerZ, heightZ):
+    lenSample = min([len(a), len(b)])
+    sample = a[-lenSample:] + b[:lenSample]
+    xs = [d[0] for d in sample]
+    ys = [d[1] for d in sample]
+    zs = [d[2] for d in sample]
+    cs = [d[3] for d in sample]
+    xSplined = bspline(xs, n=1000, periodic=False)
+    ySplined = bspline(ys, n=1000, periodic=False)
+    zSplined = bspline(zs, n=1000, periodic=False)
+    cSplined = bspline(cs, n=1000, periodic=False)
+    z0 = centerZ - heightZ*0.5
+    z1 = centerZ + heightZ*0.5
+    zDelta = zs[-1] - zs[0]
+    direction = zDelta / abs(zDelta)
+    if direction < 0:
+        zt = z0
+        z0 = z1
+        z1 = zt
+    zStartIndex = False
+    zEndIndex = False
+    for i, z in enumerate(zSplined):
+        if zStartIndex is False and (z >= z0 and direction >= 0 or z <= z0 and direction < 0):
+            zStartIndex = i
+        elif zStartIndex is not False and zEndIndex is False and (z > z1 and direction >= 0 or z < z1 and direction < 0):
+            zEndIndex = i - 1
+    splined = []
+    for i in range(sampleSize):
+        percent = 1.0 * i / (sampleSize-1)
+        index = lerp(zStartIndex, zEndIndex, percent)
+        index = int(round(index))
+        x = xSplined[index]
+        y = ySplined[index]
+        z = zSplined[index]
+        c = cSplined[index]
+        splined.append((x, y, z, c))
+    return splined
 
 def translateLoop(loop, v):
     newLoop = []
