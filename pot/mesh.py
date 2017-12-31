@@ -53,18 +53,18 @@ print "Check: %s > %s" % (BODY_BASE_HEIGHT-EDGE_RADIUS, EDGE_RADIUS)
 
 # define pot: x, y, z
 POT_OUTER_A = [
-    (BASE_INSET_L-ER2, BASE_INSET_W-ER2, BASE_INSET_HEIGHT),                     # base inset edge
-    (BASE_INSET_L, BASE_INSET_W, BASE_INSET_HEIGHT),                             # base inset
-    (BASE_INSET_L, BASE_INSET_W, 0),                                             # base inner
-    (LENGTH*BASE_L, WIDTH*BASE_W, 0),                                            # base outer bottom
-    (LENGTH*BASE_L, WIDTH*BASE_W, BASE_HEIGHT),                                  # base outer top
-    (LENGTH, WIDTH, BASE_HEIGHT),                                                # body bottom
-    (LENGTH, WIDTH, BASE_HEIGHT+EDGE_RADIUS),                                    # base outer edge
-    (LENGTH, WIDTH, BODY_BASE_HEIGHT-EDGE_RADIUS),                               # body base edge before
-    (LENGTH, WIDTH, BODY_BASE_HEIGHT),                                           # body base top
-    # (LENGTH*BODY_BTM, WIDTH*BODY_BTM, BODY_BASE_HEIGHT),                         # body bottom
-    (LENGTH*BODY_BTM, WIDTH*BODY_BTM, BODY_BASE_HEIGHT+EDGE_RADIUS),             # body bottom edge after
-    (LENGTH*BODY_BTM, WIDTH*BODY_BTM, BODY_BASE_HEIGHT+ER2),                     # body bottom edge after edge
+    (BASE_INSET_L-ER2, BASE_INSET_W-ER2, BASE_INSET_HEIGHT, CENTER),                     # base inset edge
+    (BASE_INSET_L, BASE_INSET_W, BASE_INSET_HEIGHT, CENTER),                             # base inset
+    (BASE_INSET_L, BASE_INSET_W, 0, CENTER),                                             # base inner
+    (LENGTH*BASE_L, WIDTH*BASE_W, 0, CENTER),                                            # base outer bottom
+    (LENGTH*BASE_L, WIDTH*BASE_W, BASE_HEIGHT, CENTER),                                  # base outer top
+    (LENGTH, WIDTH, BASE_HEIGHT, CENTER),                                                # body bottom
+    (LENGTH, WIDTH, BASE_HEIGHT+EDGE_RADIUS, CENTER),                                    # base outer edge
+    (LENGTH, WIDTH, BODY_BASE_HEIGHT-EDGE_RADIUS, CENTER),                               # body base edge before
+    (LENGTH, WIDTH, BODY_BASE_HEIGHT, CENTER),                                           # body base top
+    # (LENGTH*BODY_BTM, WIDTH*BODY_BTM, BODY_BASE_HEIGHT, CENTER),                         # body bottom
+    (LENGTH*BODY_BTM, WIDTH*BODY_BTM, BODY_BASE_HEIGHT+EDGE_RADIUS, CENTER),             # body bottom edge after
+    (LENGTH*BODY_BTM, WIDTH*BODY_BTM, BODY_BASE_HEIGHT+ER2, CENTER),                     # body bottom edge after edge
 ]
 # Insert spout outer hole here
 POT_OUTER_B = [
@@ -74,7 +74,7 @@ POT_OUTER_B = [
     (LENGTH*BODY_TOP_INSET, WIDTH*BODY_TOP_INSET, BODY_HEIGHT, OUTER_TOP_CENTER),                         # body top inset top
     (LENGTH*BODY_TOP_INSET-EDGE_RADIUS, WIDTH*BODY_TOP_INSET-EDGE_RADIUS, BODY_HEIGHT, OUTER_TOP_CENTER),          # body top inset top
 ]
-POT_OUTER = POT_OUTER_A + POT_OUTER_B
+# POT_OUTER = POT_OUTER_A + POT_OUTER_B
 print "Top inset length: %scm" % (LENGTH*BODY_TOP_INSET*0.1)
 
 TOP_HOLE_EDGE = 4.0
@@ -222,39 +222,48 @@ SPOUT_SHAPE = [
     (0.0, 0.5-SPOUT_POINT_Y),        # top left point
 ]
 
-# # interpolate outer pot to accommodate hole for spout
-# def lerpBetweenLoopGroups(a, b, sampleSize, centerZ, heightZ):
-#     lenSample = min([len(a), len(b)])
-#     sample = a[-lenSample:] + b[:lenSample]
-#     xs = [d[0] for d in sample]
-#     ys = [d[1] for d in sample]
-#     zs = [d[2] for d in sample]
-#     xSplined = bspline(xs, n=1000, periodic=False)
-#     ySplined = bspline(ys, n=1000, periodic=False)
-#     zSplined = bspline(zs, n=1000, periodic=False)
-#     z0 = centerZ - heightZ*0.5
-#     z1 = centerZ + heightZ*0.5
-#     zDelta = zs[-1] - zs[0]
-#     direction = zDelta / abs(zDelta)
-#     if direction < 0:
-#         zt = z0
-#         z0 = z1
-#         z1 = zt
-#     zStartIndex = False
-#     zEndIndex = False
-#     for i, z in enumerate(zSplined):
-#         if zStartIndex is False and (z >= z0 and direction >= 0 or z <= z0 and direction < 0):
-#             zStartIndex = i
-#         elif zStartIndex is not False and zEndIndex is False and (z > z1 and direction >= 0 or z < z1 and direction < 0):
-#             zEndIndex = i - 1
-#     print zStartIndex
-#     print zEndIndex
-#     for i in range(sampleSize):
-#         percent = 1.0 * i / (sampleSize-1)
+# interpolate outer pot to accommodate hole for spout
+def lerpBetweenLoopGroups(a, b, sampleSize, centerZ, heightZ):
+    lenSample = min([len(a), len(b)])
+    sample = a[-lenSample:] + b[:lenSample]
+    xs = [d[0] for d in sample]
+    ys = [d[1] for d in sample]
+    zs = [d[2] for d in sample]
+    cs = [d[3] for d in sample]
+    xSplined = bspline(xs, n=1000, periodic=False)
+    ySplined = bspline(ys, n=1000, periodic=False)
+    zSplined = bspline(zs, n=1000, periodic=False)
+    cSplined = bspline(cs, n=1000, periodic=False)
+    z0 = centerZ - heightZ*0.5
+    z1 = centerZ + heightZ*0.5
+    zDelta = zs[-1] - zs[0]
+    direction = zDelta / abs(zDelta)
+    if direction < 0:
+        zt = z0
+        z0 = z1
+        z1 = zt
+    zStartIndex = False
+    zEndIndex = False
+    for i, z in enumerate(zSplined):
+        if zStartIndex is False and (z >= z0 and direction >= 0 or z <= z0 and direction < 0):
+            zStartIndex = i
+        elif zStartIndex is not False and zEndIndex is False and (z > z1 and direction >= 0 or z < z1 and direction < 0):
+            zEndIndex = i - 1
+    lerped = []
+    for i in range(sampleSize):
+        percent = 1.0 * i / (sampleSize-1)
+        index = lerp(zStartIndex, zEndIndex, percent)
+        index = int(round(index))
+        x = xSplined[index]
+        y = ySplined[index]
+        z = zSplined[index]
+        c = cSplined[index]
+        lerped.append((x, y, z, c))
+    return lerped
 
-# sampleSize = HALF_VERTICES_PER_EDGE_LOOP/4 + 1 + 2 + 2
-# outerSpoutLoops = lerpBetweenLoopGroups(POT_OUTER_A, POT_OUTER_B, sampleSize, centerZ=SPOUT_CENTER_HEIGHT, heightZ=SPOUT_HEIGHT)
-# sys.exit(1)
+sampleSize = HALF_VERTICES_PER_EDGE_LOOP/4 + 1 + 2
+outerSpoutLoops = lerpBetweenLoopGroups(POT_OUTER_A, POT_OUTER_B, sampleSize, centerZ=SPOUT_CENTER_HEIGHT, heightZ=SPOUT_HEIGHT)
+POT_OUTER = POT_OUTER_A + outerSpoutLoops + POT_OUTER_B
 
 # build the mesh
 mesh = Mesh()
