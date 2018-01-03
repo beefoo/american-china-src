@@ -186,7 +186,8 @@ def lerpEdgeloop(l1, l2, mu):
     lerpedEdgeloop = []
     for i, t in enumerate(l1):
         p = []
-        for j in range(3):
+        pLen = len(t)
+        for j in range(pLen):
             pp = lerp(t[j], l2[i][j], mu)
             p.append(pp)
         lerpedEdgeloop.append(tuple(p))

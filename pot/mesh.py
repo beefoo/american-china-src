@@ -242,9 +242,18 @@ for i,p in enumerate(POT_OUTER_A):
         loop = shape(SHAPE, x, y, VERTICES_PER_EDGE_LOOP, center, z)
         mesh.addEdgeLoop(loop)
 
+ADJUST_NOSE = 0.08
+SHAPE_LERP_TO = SHAPE[:]
+SHAPE_LERP_TO[-3] = (SHAPE_LERP_TO[-3][0], SHAPE_LERP_TO[-3][1]+ADJUST_NOSE) # bottom nose point
+SHAPE_LERP_TO[-1] = (SHAPE_LERP_TO[-1][0], SHAPE_LERP_TO[-1][1]-ADJUST_NOSE) # top nose point
 for i,p in enumerate(outerSpoutLoops):
     x, y, z, center = p
-    loop = shape(SHAPE, x, y, VERTICES_PER_EDGE_LOOP, center, z)
+    lshape = SHAPE[:]
+    if 2 <= i <= sampleSize-3:
+        lshape = SHAPE_LERP_TO[:]
+    elif i==1 or i==sampleSize-2:
+        lshape = lerpEdgeloop(SHAPE, SHAPE_LERP_TO, 0.5)
+    loop = shape(lshape, x, y, VERTICES_PER_EDGE_LOOP, center, z)
     mesh.addEdgeLoop(loop)
 
 for i,p in enumerate(POT_OUTER_B):
@@ -422,7 +431,12 @@ for i,p in enumerate(POT_INNER_A):
 
 for i,p in enumerate(innerSpoutLoops):
     x, y, z, center = p
-    loop = shape(SHAPE, x, y, VERTICES_PER_EDGE_LOOP, center, z)
+    lshape = SHAPE[:]
+    if 2 <= i <= sampleSize-3:
+        lshape = SHAPE_LERP_TO[:]
+    elif i==1 or i==sampleSize-2:
+        lshape = lerpEdgeloop(SHAPE, SHAPE_LERP_TO, 0.5)
+    loop = shape(lshape, x, y, VERTICES_PER_EDGE_LOOP, center, z)
     mesh.addEdgeLoop(loop)
 
 potInnerLen = len(POT_INNER_B)

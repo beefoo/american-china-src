@@ -114,17 +114,17 @@ im = Image.new("RGB", (2000, 2000), (255,255,255))
 draw = ImageDraw.Draw(im)
 colors = [(0,0,0), (255,0,0), (0,255,0), (0,0,255), (255,0,255), (100,100,0), (0,255,255)]
 
-# for i,p1 in enumerate(loop1):
-#     p0 = loop1[i-1]
-#     color = colors[i % len(colors)]
-#     draw.line((p0[0], p0[1], p1[0], p1[1]), fill=color)
-#     draw.text((p1[0], p1[1]), str(i), fill=color)
-
-for i,p1 in enumerate(loop2):
-    p0 = loop2[i-1]
+for i,p1 in enumerate(loop1):
+    p0 = loop1[i-1]
     color = colors[i % len(colors)]
     draw.line((p0[0], p0[1], p1[0], p1[1]), fill=color)
     draw.text((p1[0], p1[1]), str(i), fill=color)
+
+# for i,p1 in enumerate(loop2):
+#     p0 = loop2[i-1]
+#     color = colors[i % len(colors)]
+#     draw.line((p0[0], p0[1], p1[0], p1[1]), fill=color)
+#     draw.text((p1[0], p1[1]), str(i), fill=color)
 
 del draw
 im.save("shapeTest.png")
