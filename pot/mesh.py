@@ -221,7 +221,7 @@ SPOUT_SHAPE = [
     (0.0, 0.5-SPOUT_POINT_Y),        # top left point
 ]
 
-sampleSize = HALF_VERTICES_PER_EDGE_LOOP/4 + 1 + 2
+sampleSize = HALF_VERTICES_PER_EDGE_LOOP/4 + 1
 outerSpoutCenterZ = SPOUT_CENTER_HEIGHT * 0.95
 # outerSpoutLoops = splineBetweenLoopGroups(POT_OUTER_A, POT_OUTER_B, sampleSize, centerZ=outerSpoutCenterZ, heightZ=SPOUT_HEIGHT)
 outerSpoutLoops = lerpBetweenLoops(POT_OUTER_A[-1], POT_OUTER_B[0], sampleSize, centerZ=outerSpoutCenterZ, heightZ=SPOUT_HEIGHT)
@@ -242,19 +242,62 @@ for i,p in enumerate(POT_OUTER_A):
         loop = shape(SHAPE, x, y, VERTICES_PER_EDGE_LOOP, center, z)
         mesh.addEdgeLoop(loop)
 
-ADJUST_NOSE = 0.08
-SHAPE_LERP_TO = SHAPE[:]
-SHAPE_LERP_TO[-3] = (SHAPE_LERP_TO[-3][0], SHAPE_LERP_TO[-3][1]+ADJUST_NOSE) # bottom nose point
-SHAPE_LERP_TO[-1] = (SHAPE_LERP_TO[-1][0], SHAPE_LERP_TO[-1][1]-ADJUST_NOSE) # top nose point
-for i,p in enumerate(outerSpoutLoops):
-    x, y, z, center = p
-    lshape = SHAPE[:]
-    if 2 <= i <= sampleSize-3:
-        lshape = SHAPE_LERP_TO[:]
-    elif i==1 or i==sampleSize-2:
-        lshape = lerpEdgeloop(SHAPE, SHAPE_LERP_TO, 0.5)
-    loop = shape(lshape, x, y, VERTICES_PER_EDGE_LOOP, center, z)
-    mesh.addEdgeLoop(loop)
+def lerpSpoutLoops(loops, shapeA, openingId):
+    global SUBDIVIDE_X
+    global VERTICES_PER_EDGE_LOOP
+    global HALF_VERTICES_PER_EDGE_LOOP
+
+    sampleSize = len(loops)
+    adjustNose = 0.08
+    shapeB = shapeA[:]
+    shapeB[-3] = (shapeB[-3][0], shapeB[-3][1]+adjustNose) # bottom nose point
+    shapeB[-1] = (shapeB[-1][0], shapeB[-1][1]-adjustNose) # top nose point
+    returnData = []
+    for i,p in enumerate(loops):
+        x, y, z, center = p
+        lshape = shapeA[:]
+        # make the hole wider in the center
+        if 1 <= i <= sampleSize-2:
+            lshape = shapeB[:]
+        loop = shape(lshape, x, y, VERTICES_PER_EDGE_LOOP, center, z)
+        loopOpenings = [True for v in loop]
+        # cut a hole in the center/point
+        if 1 <= i <= sampleSize-2:
+            holeIndex = -2 * 2**SUBDIVIDE_X
+            loop[holeIndex] = False
+            loopOpenings[holeIndex] = False
+            for j in range(int(2**SUBDIVIDE_X)):
+                loop[holeIndex+j] = False
+                loopOpenings[holeIndex+j] = False
+                loop[holeIndex-j] = False
+                loopOpenings[holeIndex-j] = False
+        # define loop openings
+        # if i<=0:
+        #     startIndex = -2 * 2**SUBDIVIDE_X + 1
+        #     for j in range(3):
+        #         k = startIndex - j
+        #         loopOpenings[k] = [openingId, 1+j, HALF_VERTICES_PER_EDGE_LOOP]
+        # elif i>=sampleSize-1:
+        #     startIndex = -2 * 2**SUBDIVIDE_X + 1
+        #     for j in range(3):
+        #         k = startIndex - j
+        #         loopOpenings[k] = [openingId, (HALF_VERTICES_PER_EDGE_LOOP*3/4)-1-j, HALF_VERTICES_PER_EDGE_LOOP]
+        # else:
+        #     holeIndex = -2 * 2**SUBDIVIDE_X
+        #     indexLeft = HALF_VERTICES_PER_EDGE_LOOP - (i-1)
+        #     indexRight = (HALF_VERTICES_PER_EDGE_LOOP/4) + (i-1)
+        #     if indexLeft==HALF_VERTICES_PER_EDGE_LOOP:
+        #         indexLeft = 0
+        #     loopOpenings[holeIndex+1] = [openingId, indexLeft, HALF_VERTICES_PER_EDGE_LOOP]
+        #     loopOpenings[holeIndex-1] = [openingId, indexRight, HALF_VERTICES_PER_EDGE_LOOP]
+        returnData.append((loop, loopOpenings))
+
+    return returnData
+
+lerpedLoops = lerpSpoutLoops(outerSpoutLoops, SHAPE, "OUTER_SPOUT_OPENING")
+for l in lerpedLoops:
+    loop, loopOpenings = l
+    mesh.addEdgeLoop(loop, loopOpenings)
 
 for i,p in enumerate(POT_OUTER_B):
     x, y, z, center = p
@@ -429,15 +472,10 @@ for i,p in enumerate(POT_INNER_A):
     loop = shape(SHAPE, x, y, VERTICES_PER_EDGE_LOOP, center, z)
     mesh.addEdgeLoop(loop)
 
-for i,p in enumerate(innerSpoutLoops):
-    x, y, z, center = p
-    lshape = SHAPE[:]
-    if 2 <= i <= sampleSize-3:
-        lshape = SHAPE_LERP_TO[:]
-    elif i==1 or i==sampleSize-2:
-        lshape = lerpEdgeloop(SHAPE, SHAPE_LERP_TO, 0.5)
-    loop = shape(lshape, x, y, VERTICES_PER_EDGE_LOOP, center, z)
-    mesh.addEdgeLoop(loop)
+lerpedLoops = lerpSpoutLoops(innerSpoutLoops, SHAPE, "INNER_SPOUT_OPENING")
+for l in lerpedLoops:
+    loop, loopOpenings = l
+    mesh.addEdgeLoop(loop, loopOpenings)
 
 potInnerLen = len(POT_INNER_B)
 for i,p in enumerate(POT_INNER_B):
@@ -571,13 +609,13 @@ data = [
     #     "faces": hmesh.faces,
     #     "location": (0.0, 0.0, 0.0)
     # }
-    ,{
-        "name": "Spout",
-        "verts": roundP(smesh.verts, PRECISION),
-        "edges": [],
-        "faces": smesh.faces,
-        "location": (0.0, 0.0, 0.0)
-    }
+    # ,{
+    #     "name": "Spout",
+    #     "verts": roundP(smesh.verts, PRECISION),
+    #     "edges": [],
+    #     "faces": smesh.faces,
+    #     "location": (0.0, 0.0, 0.0)
+    # }
 ]
 
 print "Writing to file..."
