@@ -170,14 +170,19 @@ class Mesh:
         self.offsets = []
         self.closedLoops = []
 
-    def addEdgeLoop(self, loop, offsetStart=False, offsetEnd=False, closed=True):
-        self.edgeLoops.append(loop)
-        self.offsets.append((offsetStart, offsetEnd))
-        self.closedLoops.append(closed)
+    def addEdgeLoop(self, loop, offsetStart=False, offsetEnd=False, closed=True, prepend=False):
+        if prepend:
+            self.edgeLoops.insert(0, loop)
+            self.offsets.insert(0, (offsetStart, offsetEnd))
+            self.closedLoops.insert(0, closed)
+        else:
+            self.edgeLoops.append(loop)
+            self.offsets.append((offsetStart, offsetEnd))
+            self.closedLoops.append(closed)
 
-    def addEdgeLoops(self, loops):
+    def addEdgeLoops(self, loops, prepend=False):
         for loop in loops:
-            self.addEdgeLoop(loop)
+            self.addEdgeLoop(loop, prepend=prepend)
 
     def closeOpenLoops(self):
 
@@ -402,6 +407,8 @@ class Mesh:
 
     def removeLoop(self, index):
         removed = self.edgeLoops.pop(index)
+        removed = self.offsets.pop(index)
+        removed = self.closedLoops.pop(index)
 
     def solidify(self, center, thickness):
         originalLength = len(self.edgeLoops) - 1
@@ -501,6 +508,11 @@ class Mesh:
             self.addEdgeLoop(displaced, offsetStart=offset[0], offsetEnd=offset[1], closed=closed)
 
             index -= 1
+
+    def translate(self, x, y, z):
+        for i, edgeLoop in enumerate(self.edgeLoops):
+            for j, v in enumerate(edgeLoop):
+                self.edgeLoops[i][j] = (v[0]+x, v[1]+y, v[2]+z)
 
     def updateEdgeLoops(self, loops, offset0=None, offset1=None):
         if offset0 is None and offset1 is None:

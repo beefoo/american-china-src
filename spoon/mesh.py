@@ -41,7 +41,7 @@ print "%s vertices per edge loop" % VERTICES_PER_EDGE_LOOP
 CENTER = (0, 0, 0)
 PRECISION = 8
 LENGTH = 150.0
-WIDTH = 66.0
+WIDTH = 72.0
 HEIGHT = 54.0
 BASE_HEIGHT = 2.0
 SPOON_HEIGHT = HEIGHT - BASE_HEIGHT
@@ -53,7 +53,7 @@ SPOON_DISTORT_CENTER_X = 0.4
 
 WIDTHS = [(0, 0.25), (0.15, 1.0), (0.5, 0.75), (0.9, 0.4), (1.0, 0.4)]
 
-BASE_WIDTH = WIDTH * 0.5
+BASE_WIDTH = WIDTH * 0.4
 
 # read data
 data = readCSV(DATA_FILE)
@@ -196,15 +196,52 @@ for i, d in enumerate(handleData):
 mesh.solidify(CENTER, THICKNESS)
 
 # hack: remove the loop before the inner circle mesh to get rid of some weirdness
-removeIndex = len(mesh.edgeLoops)-len(baseInset)-1
+baseInsetLen = len(baseInset)
+removeIndex = len(mesh.edgeLoops)-baseInsetLen-1
 mesh.removeLoop(removeIndex)
 # remove another loop because it's too tight
-removeIndex = len(mesh.edgeLoops)-len(baseInset)-3
+removeIndex = len(mesh.edgeLoops)-baseInsetLen-3
 mesh.removeLoop(removeIndex)
-removeIndex = len(mesh.edgeLoops)-len(baseInset)-1
+removeIndex = len(mesh.edgeLoops)-baseInsetLen-1
 mesh.removeLoop(removeIndex)
 
-# TODO: add base
+# Add base stand
+STAND_HEIGHT = 2.0
+STAND_THICKNESS = 3.0
+STAND_OFFSET = 3.0
+r1 = baseRadiusX - INSET_WIDTH - STAND_THICKNESS*0.5 - STAND_OFFSET*0.5
+r2 = baseRadiusY - INSET_WIDTH - STAND_THICKNESS*0.5 - STAND_OFFSET*0.5
+standLoops = []
+
+# start with base inset
+standLoops += ellipseMesh(VERTICES_PER_EDGE_LOOP, CENTER, r1, r2, STAND_HEIGHT)
+
+# move out to inner stand top
+r1 += INSET_WIDTH*0.5
+r2 += INSET_WIDTH*0.5
+standLoops.append(ellipse(VERTICES_PER_EDGE_LOOP, CENTER, r1, r2, STAND_HEIGHT))
+
+# move down to inner stand bottom
+standLoops.append(ellipse(VERTICES_PER_EDGE_LOOP, CENTER, r1, r2, 0))
+
+# move out to outer stand bottom
+r1 += STAND_THICKNESS*0.5
+r2 += STAND_THICKNESS*0.5
+standLoops.append(ellipse(VERTICES_PER_EDGE_LOOP, CENTER, r1, r2, 0))
+
+# move up to outer stand top
+standLoops.append(ellipse(VERTICES_PER_EDGE_LOOP, CENTER, r1, r2, STAND_HEIGHT))
+
+# remove the original base inset
+for i in range(baseInsetLen):
+    mesh.removeLoop(0)
+
+# move everything up to account for stand
+mesh.translate(0, 0, STAND_HEIGHT)
+
+# add the stand
+standLoops = list(reversed(standLoops))
+mesh.addEdgeLoops(standLoops, prepend=True)
 
 print "Calculating faces..."
 # create faces from edges
