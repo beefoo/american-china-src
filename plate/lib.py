@@ -175,7 +175,7 @@ class Mesh:
         for loop in loops:
             self.addEdgeLoop(loop)
 
-    def displaceEdgeLoops(self, imgMap, imgW, imgH, bounds, displacement, scale, translate):
+    def displaceEdgeLoops(self, imgMap, imgW, imgH, bounds, displacement, scale, translate, minZ=0):
         dx, dy, dz = displacement
         for i, loop in enumerate(self.edgeLoops):
             newLoop = []
@@ -190,8 +190,9 @@ class Mesh:
                     r, g, b = imgMap[imgIndex]
                     x = x + dx * (r / 255.0)
                     y = y + dy * (g / 255.0)
-                    z = z + dz * (b / 255.0)
-                    z = max([z, 0])
+                    if z > minZ:
+                        z = z + dz * (b / 255.0)
+                        z = max([z, minZ])
                 newLoop.append((x, y, z))
             self.edgeLoops[i] = newLoop
 

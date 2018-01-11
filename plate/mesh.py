@@ -29,9 +29,11 @@ CENTER = (0, 0, 0)
 WIDTH = 123.0
 HEIGHT = 22.0
 EDGE_RADIUS = 4.0
-THICKNESS = 4.0
-DISPLACEMENT = (0, 3.0, -3.0)
+THICKNESS = 4.5
+DISPLACEMENT = (-3.0, 3.0, -3.0)
 BASE_HEIGHT = 6.0
+MIN_HEIGHT = 1.5
+BASE_STAND_WIDTH = 4.0
 
 CENTER_WIDTH = WIDTH * 0.5
 BASE_WIDTH = WIDTH * 0.6
@@ -44,16 +46,19 @@ CENTER_HEIGHT = INSET_BASE_HEIGHT + THICKNESS
 TOP_EDGE_THINKNESS = THICKNESS * 1.1
 
 print "%s should be bigger than %s" % (BODY_HEIGHT+THICKNESS, CENTER_HEIGHT)
+print "%s should be bigger than %s" % (BASE_WIDTH, INNER_BASE_WIDTH + BASE_STAND_WIDTH*2)
 
 # Adjust image data
 IMAGE_SCALE = 1.0
 IMAGE_TRANSLATE = (-CENTER_WIDTH*0.4, 0)
 
 PLATE = [
-    [INSET_BASE_WIDTH - EDGE_RADIUS*2, INSET_BASE_HEIGHT],      # start with base inset edge
+    [INSET_BASE_WIDTH - EDGE_RADIUS, INSET_BASE_HEIGHT],      # start with base inset edge
     [INSET_BASE_WIDTH, INSET_BASE_HEIGHT],                      # move out to base inset
-    [INNER_BASE_WIDTH, 0],                                      # move down and out to inner base
-    [BASE_WIDTH, 0],                                            # move out to outer base
+    [INNER_BASE_WIDTH, INSET_BASE_HEIGHT],                      # move out to base inset
+    [INNER_BASE_WIDTH, 0],                                      # move down to inner base stand
+    [INNER_BASE_WIDTH + BASE_STAND_WIDTH*2, 0],                 # move out to outer base stand
+    [INNER_BASE_WIDTH + BASE_STAND_WIDTH*2, BASE_HEIGHT],       # move up to outer base stand top
     [BASE_WIDTH, BASE_HEIGHT],                                  # move up to base top
     [BODY_WIDTH, BODY_HEIGHT],                                  # move up and out to body
     [WIDTH, HEIGHT-TOP_EDGE_THINKNESS],                         # move up to outer top
@@ -101,7 +106,7 @@ for i, d in enumerate(loopData):
 # displace edge loops with image map
 r = WIDTH * 0.5
 bounds = [(-r, -r), (r, r)]
-mesh.displaceEdgeLoops(IMAGE_MAP, IMAGE_MAP_W, IMAGE_MAP_H, bounds, DISPLACEMENT, IMAGE_SCALE, IMAGE_TRANSLATE)
+mesh.displaceEdgeLoops(IMAGE_MAP, IMAGE_MAP_W, IMAGE_MAP_H, bounds, DISPLACEMENT, IMAGE_SCALE, IMAGE_TRANSLATE, MIN_HEIGHT)
 
 print "Calculating faces..."
 # generate faces from vertices
