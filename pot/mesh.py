@@ -171,14 +171,14 @@ SHAPE_HOLE = [
 SPOUT_VERTICES_PER_EDGE_LOOP = HALF_VERTICES_PER_EDGE_LOOP
 SPOUT_EDGE = 3.0
 SPOUT_INNER_WIDTH = 12.0
-SPOUT_INNER_HEIGHT = 12.0
+SPOUT_INNER_HEIGHT = 10.0
 SPOUT_THICKNESS = 4.0
 SPOUT_WIDTH = SPOUT_INNER_WIDTH + SPOUT_THICKNESS*2
 SPOUT_HEIGHT = SPOUT_INNER_HEIGHT + SPOUT_THICKNESS*2
 SPOUT_CENTER_HEIGHT = BODY_HEIGHT * 0.667
 SPOUT_TO_X = -(LENGTH*1.08)*0.5 # increase multiplier to make longer
-SPOUT_FROM_X = -(LENGTH*0.8125)*0.5 # increase multiplier to move outer spout away from pot body
-SPOUT_INNER_X = SPOUT_FROM_X*0.925 # adjust this to be in-between inner and outer pot body
+SPOUT_FROM_X = -(LENGTH*0.825)*0.5 # increase multiplier to move outer spout away from pot body
+SPOUT_INNER_X = -(LENGTH*0.75)*0.5 # adjust this to be in-between inner and outer pot body
 
 SPOUT_ROTATE = 50.0
 SPOUT_ROTATE_CENTER = ((SPOUT_FROM_X + SPOUT_TO_X) * 0.5, 0.0, SPOUT_CENTER_HEIGHT)
@@ -198,8 +198,8 @@ SPOUT = [
     (SPOUT_INNER_WIDTH, SPOUT_INNER_HEIGHT, SPOUT_CENTER_HEIGHT, (SPOUT_INNER_X, 0, SPOUT_CENTER_HEIGHT), SPOUT_START_ROTATE), # inner
 ]
 
-SPOUT_POINT_Y = 0.05
-SPOUT_POINT_X = 0.05
+SPOUT_POINT_Y = 0.1 # decrease to make more pointy
+SPOUT_POINT_X = 0.1
 SPOUT_MID_Y = (0.5 + SPOUT_POINT_Y) * 0.5
 SPOUT_MID_X = (0.5 + SPOUT_POINT_X) * 0.5
 SPOUT_SHAPE = [
@@ -223,11 +223,13 @@ SPOUT_SHAPE = [
 
 sampleSize = HALF_VERTICES_PER_EDGE_LOOP/4 + 1
 outerSpoutCenterZ = SPOUT_CENTER_HEIGHT * 0.95
+outerSpoutHeightZ = SPOUT_HEIGHT * 1.2
 # outerSpoutLoops = splineBetweenLoopGroups(POT_OUTER_A, POT_OUTER_B, sampleSize, centerZ=outerSpoutCenterZ, heightZ=SPOUT_HEIGHT)
-outerSpoutLoops = lerpBetweenLoops(POT_OUTER_A[-1], POT_OUTER_B[0], sampleSize, centerZ=outerSpoutCenterZ, heightZ=SPOUT_HEIGHT)
+outerSpoutLoops = lerpBetweenLoops(POT_OUTER_A[-1], POT_OUTER_B[0], sampleSize, centerZ=outerSpoutCenterZ, heightZ=outerSpoutHeightZ)
 
 innerSpoutCenterZ = outerSpoutCenterZ * 0.95
-innerSpoutLoops = lerpBetweenLoops(POT_INNER_A[-1], POT_INNER_B[0], sampleSize, centerZ=innerSpoutCenterZ, heightZ=SPOUT_HEIGHT)
+innerSpoutHeightZ = SPOUT_HEIGHT
+innerSpoutLoops = lerpBetweenLoops(POT_INNER_A[-1], POT_INNER_B[0], sampleSize, centerZ=innerSpoutCenterZ, heightZ=innerSpoutHeightZ)
 
 # build the mesh
 mesh = Mesh()
@@ -242,13 +244,13 @@ for i,p in enumerate(POT_OUTER_A):
         loop = shape(SHAPE, x, y, VERTICES_PER_EDGE_LOOP, center, z)
         mesh.addEdgeLoop(loop)
 
-def lerpSpoutLoops(loops, shapeA, openingId):
+def lerpSpoutLoops(loops, shapeA, openingId, direction=1):
     global SUBDIVIDE_X
     global VERTICES_PER_EDGE_LOOP
     global HALF_VERTICES_PER_EDGE_LOOP
 
     sampleSize = len(loops)
-    adjustNose = 0.08
+    adjustNose = 0.0975 # make this bigger to make hole wider
     shapeB = shapeA[:]
     shapeB[-3] = (shapeB[-3][0], shapeB[-3][1]+adjustNose) # bottom nose point
     shapeB[-1] = (shapeB[-1][0], shapeB[-1][1]-adjustNose) # top nose point
@@ -272,29 +274,45 @@ def lerpSpoutLoops(loops, shapeA, openingId):
                 loop[holeIndex-j] = False
                 loopOpenings[holeIndex-j] = False
         # define loop openings
-        # if i<=0:
-        #     startIndex = -2 * 2**SUBDIVIDE_X + 1
-        #     for j in range(3):
-        #         k = startIndex - j
-        #         loopOpenings[k] = [openingId, 1+j, HALF_VERTICES_PER_EDGE_LOOP]
-        # elif i>=sampleSize-1:
-        #     startIndex = -2 * 2**SUBDIVIDE_X + 1
-        #     for j in range(3):
-        #         k = startIndex - j
-        #         loopOpenings[k] = [openingId, (HALF_VERTICES_PER_EDGE_LOOP*3/4)-1-j, HALF_VERTICES_PER_EDGE_LOOP]
-        # else:
-        #     holeIndex = -2 * 2**SUBDIVIDE_X
-        #     indexLeft = HALF_VERTICES_PER_EDGE_LOOP - (i-1)
-        #     indexRight = (HALF_VERTICES_PER_EDGE_LOOP/4) + (i-1)
-        #     if indexLeft==HALF_VERTICES_PER_EDGE_LOOP:
-        #         indexLeft = 0
-        #     loopOpenings[holeIndex+1] = [openingId, indexLeft, HALF_VERTICES_PER_EDGE_LOOP]
-        #     loopOpenings[holeIndex-1] = [openingId, indexRight, HALF_VERTICES_PER_EDGE_LOOP]
+        ii = i
+        # normalize so we're always going from top to bottom
+        if direction > 0:
+            ii = sampleSize - i - 1
+        # top of the loop
+        if ii <= 0:
+            holeIndex = -2 * 2**SUBDIVIDE_X
+            startIndex = holeIndex + int(2**SUBDIVIDE_X)
+            for j in range(int(2**SUBDIVIDE_X)*2+1):
+                k = startIndex - j
+                # if direction > 0:
+                #     print "k=%s, j=%s" % (k, j)
+                loopOpenings[k] = [openingId, j, HALF_VERTICES_PER_EDGE_LOOP]
+        # bottom of loop
+        elif ii >= sampleSize-1:
+            holeIndex = -2 * 2**SUBDIVIDE_X
+            startIndex = holeIndex + int(2**SUBDIVIDE_X)
+            for j in range(int(2**SUBDIVIDE_X)*2+1):
+                k = startIndex - j
+                # if direction > 0:
+                #     print "k=%s, j=%s" % (k, (HALF_VERTICES_PER_EDGE_LOOP*3/4)-j)
+                loopOpenings[k] = [openingId, (HALF_VERTICES_PER_EDGE_LOOP*3/4)-j, HALF_VERTICES_PER_EDGE_LOOP]
+        # middle loops from top to bottom
+        else:
+            holeIndex = -2 * 2**SUBDIVIDE_X
+            indexLeft = HALF_VERTICES_PER_EDGE_LOOP - ii
+            indexRight = (HALF_VERTICES_PER_EDGE_LOOP/4) + ii
+            loopOpenings[holeIndex+2] = [openingId, indexLeft, HALF_VERTICES_PER_EDGE_LOOP]
+            loopOpenings[holeIndex-2] = [openingId, indexRight, HALF_VERTICES_PER_EDGE_LOOP]
+            # if direction > 0:
+            #     print ii
+            #     print "k=%s, j=%s" % (holeIndex+2, indexLeft)
+            #     print "k=%s, j=%s" % (holeIndex-2, indexRight)
         returnData.append((loop, loopOpenings))
 
     return returnData
 
-lerpedLoops = lerpSpoutLoops(outerSpoutLoops, SHAPE, "OUTER_SPOUT_OPENING")
+SPOUT_OUTER_OPENING_ID = "OUTER_SPOUT_OPENING"
+lerpedLoops = lerpSpoutLoops(outerSpoutLoops, SHAPE, SPOUT_OUTER_OPENING_ID)
 for l in lerpedLoops:
     loop, loopOpenings = l
     mesh.addEdgeLoop(loop, loopOpenings)
@@ -472,7 +490,8 @@ for i,p in enumerate(POT_INNER_A):
     loop = shape(SHAPE, x, y, VERTICES_PER_EDGE_LOOP, center, z)
     mesh.addEdgeLoop(loop)
 
-lerpedLoops = lerpSpoutLoops(innerSpoutLoops, SHAPE, "INNER_SPOUT_OPENING")
+SPOUT_INNER_OPENING_ID = "INNER_SPOUT_OPENING"
+lerpedLoops = lerpSpoutLoops(innerSpoutLoops, SHAPE, SPOUT_INNER_OPENING_ID, direction=0)
 for l in lerpedLoops:
     loop, loopOpenings = l
     mesh.addEdgeLoop(loop, loopOpenings)
@@ -578,7 +597,7 @@ mesh.joinMesh(hmesh, [(LEFT_OPENING_ID, False), (RIGHT_OPENING_ID, True)])
 # build the mesh
 smesh = Mesh()
 
-for h in SPOUT:
+for i, h in enumerate(SPOUT):
     r = 0.0
     if len(h) > 4:
         x, y, z, c, r = h
@@ -588,9 +607,18 @@ for h in SPOUT:
     loop = rotateY(loop, c, -90.0+r)
     loop = rotateY(loop, SPOUT_ROTATE_CENTER, SPOUT_ROTATE)
     loop = translateLoop(loop, SPOUT_TRANSLATE)
-    smesh.addEdgeLoop(loop)
+    loopOpening = False
+    offset = SPOUT_VERTICES_PER_EDGE_LOOP/4
+    if i == 0:
+        loopOpening = [[SPOUT_OUTER_OPENING_ID, j-offset, SPOUT_VERTICES_PER_EDGE_LOOP] for j, v in enumerate(loop)]
+    elif i >= len(SPOUT)-1:
+        loopOpening = [[SPOUT_INNER_OPENING_ID, j-offset, SPOUT_VERTICES_PER_EDGE_LOOP] for j, v in enumerate(loop)]
+    smesh.addEdgeLoop(loop, loopOpening)
 
 smesh.processEdgeloops()
+
+# connect the main mesh to the spout mesh
+mesh.joinMesh(smesh, [(SPOUT_OUTER_OPENING_ID, False), (SPOUT_INNER_OPENING_ID, True)])
 
 # save data
 data = [
