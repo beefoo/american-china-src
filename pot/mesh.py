@@ -171,7 +171,7 @@ SHAPE_HOLE = [
 SPOUT_VERTICES_PER_EDGE_LOOP = HALF_VERTICES_PER_EDGE_LOOP
 SPOUT_EDGE = 3.0
 SPOUT_INNER_WIDTH = 12.0
-SPOUT_INNER_HEIGHT = 10.0
+SPOUT_INNER_HEIGHT = 12.0
 SPOUT_THICKNESS = 4.0
 SPOUT_WIDTH = SPOUT_INNER_WIDTH + SPOUT_THICKNESS*2
 SPOUT_HEIGHT = SPOUT_INNER_HEIGHT + SPOUT_THICKNESS*2
@@ -198,8 +198,8 @@ SPOUT = [
     (SPOUT_INNER_WIDTH, SPOUT_INNER_HEIGHT, SPOUT_CENTER_HEIGHT, (SPOUT_INNER_X, 0, SPOUT_CENTER_HEIGHT), SPOUT_START_ROTATE), # inner
 ]
 
-SPOUT_POINT_Y = 0.1 # decrease to make more pointy
-SPOUT_POINT_X = 0.1
+SPOUT_POINT_Y = 0.125 # increase to make more rounded
+SPOUT_POINT_X = 0.125
 SPOUT_MID_Y = (0.5 + SPOUT_POINT_Y) * 0.5
 SPOUT_MID_X = (0.5 + SPOUT_POINT_X) * 0.5
 SPOUT_SHAPE = [
@@ -250,7 +250,7 @@ def lerpSpoutLoops(loops, shapeA, openingId, direction=1):
     global HALF_VERTICES_PER_EDGE_LOOP
 
     sampleSize = len(loops)
-    adjustNose = 0.0975 # make this bigger to make hole wider
+    adjustNose = 0.1125 # make this bigger to make hole wider
     shapeB = shapeA[:]
     shapeB[-3] = (shapeB[-3][0], shapeB[-3][1]+adjustNose) # bottom nose point
     shapeB[-1] = (shapeB[-1][0], shapeB[-1][1]-adjustNose) # top nose point
