@@ -1,5 +1,6 @@
 import math
 import numpy as np
+from PIL import Image, ImageDraw
 from pprint import pprint
 from scipy import interpolate
 
@@ -53,145 +54,34 @@ def bsplineShape(points, vertices):
     points = a + b
     return points
 
-def ellipse(vertices, center, r1, r2, z):
-    verts = []
-    edgesPerSide = vertices / 4
-    # add the top
-    for i in range(edgesPerSide):
-        x = 1.0 * i / edgesPerSide * 2 - 1
-        verts.append((x,-1.0))
-    # right
-    for i in range(edgesPerSide):
-        y = 1.0 * i / edgesPerSide * 2 - 1
-        verts.append((1.0, y))
-    # bottom
-    for i in range(edgesPerSide):
-        x = 1.0 * i / edgesPerSide * 2 - 1
-        verts.append((-x, 1.0))
-    # left
-    for i in range(edgesPerSide):
-        y = 1.0 * i / edgesPerSide * 2 - 1
-        verts.append((-1.0, -y))
+def displaceWithMap(loops, filename, displaceAmount, minZ):
+    im = Image.open(filename)
+    w, h = im.size
+    imData = list(im.getdata())
+    xs = [item[0] for sublist in loops for item in sublist]
+    ys = [item[1] for sublist in loops for item in sublist]
+    bounds = [min(xs), min(ys), max(xs), max(ys)]
 
-    e = []
-    for v in verts:
-        x = v[0]
-        y = v[1]
-        u = x * math.sqrt(1.0 - 0.5 * (y * y))
-        v = y * math.sqrt(1.0 - 0.5 * (x * x))
-        # convert to actual unit
-        u = u * r1 + center[0]
-        v = v * r2 + center[1]
-        e.append((u,v,z))
-
-    return e
-
-def ellipseMesh(vertices, center, r1, r2, z, reverse=False):
-    verts = []
-    edgesPerSide = vertices / 4
-
-    # create a rectangular matrix of vertices mapped to circular disc coordinates (UV)
-    # https://stackoverflow.com/questions/13211595/how-can-i-convert-coordinates-on-a-circle-to-coordinates-on-a-square
-    for row in range(edgesPerSide+1):
-        for col in range(edgesPerSide+1):
-            # x, y is between -1 and 1
-            x = 1.0 * col / edgesPerSide * 2 - 1
-            y = 1.0 * row / edgesPerSide * 2 - 1
-            u = x * math.sqrt(1.0 - 0.5 * (y * y))
-            v = y * math.sqrt(1.0 - 0.5 * (x * x))
-            # convert to actual unit
-            u = u * r1 + center[0]
-            v = v * r2 + center[1]
-            verts.append((u,v,z))
-
-    vertLen = len(verts)
-    centerIndex = int(vertLen / 2)
-    centerRow = edgesPerSide / 2
-    centerCol = edgesPerSide/ 2
-
-    # start with one point at the center
-    edgeLoops = [[verts[centerIndex]]]
-
-    # add loops until we reach outer loop
-    edges = 2
-    while edges <= edgesPerSide:
-        edgeLoop = []
-        r = edges/2
-        # add top
-        for i in range(edges):
-            row = centerRow - r
-            col = centerCol + lerp(-r, r, 1.0 * i / edges)
-            i = int(row*(edgesPerSide+1) + col)
-            edgeLoop.append(verts[i])
-
-        # add right
-        for i in range(edges):
-            row = centerRow + lerp(-r, r, 1.0 * i / edges)
-            col = centerCol + r
-            i = int(row*(edgesPerSide+1) + col)
-            edgeLoop.append(verts[i])
-
-        # add bottom
-        for i in range(edges):
-            row = centerRow + r
-            col = centerCol + lerp(r, -r, 1.0 * i / edges)
-            i = int(row*(edgesPerSide+1) + col)
-            edgeLoop.append(verts[i])
-
-        # add left
-        for i in range(edges):
-            row = centerRow + lerp(r, -r, 1.0 * i / edges)
-            col = centerCol - r
-            i = int(row*(edgesPerSide+1) + col)
-            edgeLoop.append(verts[i])
-
-        # add edges
-        edgeLoops.append(edgeLoop)
-        edges += 2
-
-    if reverse:
-        edgeLoops = reversed(edgeLoops)
-
-    return edgeLoops
+    displaceLoops = []
+    for loop in loops:
+        displaceLoop = []
+        for p in loop:
+            x, y, z = p
+            if z >= minZ:
+                xn = norm(x, bounds[0], bounds[2])
+                yn = norm(y, bounds[1], bounds[3])
+                xi = int(round(xn * (w-1)))
+                yi = int(round(yn * (h-1)))
+                i = yi * w + xi
+                r, g, b = imData[i]
+                displaceZ = displaceAmount * (1.0-(r/255.0))
+                z += displaceZ
+            displaceLoop.append((x, y, z))
+        displaceLoops.append(displaceLoop)
+    return displaceLoops
 
 def lerp(a, b, mu):
     return (b-a) * mu + a
-
-def lerpBetweenLoops(a, b, sampleSize, centerZ, heightZ):
-    aX, aY, aZ, aC = a
-    bX, bY, bZ, bC = b
-    z0 = centerZ - heightZ*0.5
-    z1 = centerZ + heightZ*0.5
-    zDelta = bZ - aZ
-    direction = zDelta / abs(zDelta)
-    if direction < 0:
-        zt = z0
-        z0 = z1
-        z1 = zt
-        # print "%s > %s > %s > %s" % (aZ, z0, z1, bZ)
-    p0 = norm(z0, aZ, bZ)
-    p1 = norm(z1, aZ, bZ)
-    lerped = []
-    for i in range(sampleSize):
-        percent = 1.0 * i / (sampleSize-1)
-        p = lerp(p0, p1, percent)
-        x = lerp(aX, bX, p)
-        y = lerp(aY, bY, p)
-        z = lerp(aZ, bZ, p)
-        c = (lerp(aC[0], bC[0], p), lerp(aC[1], bC[1], p), lerp(aC[2], bC[2], p))
-        lerped.append((x, y, z, c))
-    return lerped
-
-def lerpEdgeloop(l1, l2, mu):
-    lerpedEdgeloop = []
-    for i, t in enumerate(l1):
-        p = []
-        pLen = len(t)
-        for j in range(pLen):
-            pp = lerp(t[j], l2[i][j], mu)
-            p.append(pp)
-        lerpedEdgeloop.append(tuple(p))
-    return lerpedEdgeloop
 
 def lerpPoint(p1, p2, mu):
     xs = [p1[0], p2[0]]
@@ -204,90 +94,6 @@ def lerpPoint(p1, p2, mu):
 
 def norm(value, a, b):
     return 1.0 * (value - a) / (b - a)
-
-# http://www.petercollingridge.co.uk/pygame-3d-graphics-tutorial/rotation-3d
-def rotateX(points, center, degrees):
-    radians = math.radians(degrees)
-    cx, cy, cz = center
-    rotated = []
-    for p in points:
-        x, y, z = p
-        y = y - cy
-        z = z - cz
-        d = math.hypot(y, z)
-        theta  = math.atan2(y, z) + radians
-        z = cz + d * math.cos(theta)
-        y = cy + d * math.sin(theta)
-        rotated.append((x, y, z))
-    return rotated
-
-def rotateY(points, center, degrees):
-    radians = math.radians(degrees)
-    cx, cy, cz = center
-    rotated = []
-    for p in points:
-        x, y, z = p
-        x = x - cx
-        z = z - cz
-        d = math.hypot(x, z)
-        theta  = math.atan2(x, z) + radians
-        z = cz + d * math.cos(theta)
-        x = cx + d * math.sin(theta)
-        rotated.append((x, y, z))
-    return rotated
-
-def rotateZ(points, center, degrees):
-    radians = math.radians(degrees)
-    cx, cy, cz = center
-    rotated = []
-    for p in points:
-        x, y, z = p
-        x = x - cx
-        y = y - cy
-        d = math.hypot(y, x)
-        theta = math.atan2(y, x) + radians
-        x = cx + d * math.cos(theta)
-        y = cy + d * math.sin(theta)
-        rotated.append((x, y, z))
-    return rotated
-
-def roundedRect(vertices, c, w, h, z, r):
-    square = []
-    hw = w * 0.5
-    hh = h * 0.5
-
-    # top left -> top right
-    y = c[1] - hh
-    x = c[0] - hw
-    square += [(x, y), (x + r, y), (c[0], y), (x + w - r, y)]
-    # top right to bottom right
-    x = c[0] + hw
-    y = c[1] - hh
-    square += [(x, y), (x, y+r), (x, c[1]), (x, y + h - r)]
-    # bottom right to bottom left
-    y = c[1] + hh
-    x = c[0] + hw
-    square += [(x, y), (x - r, y), (c[0], y), (x - w + r, y)]
-    # bottom left to top left
-    x = c[0] - hw
-    y = c[1] + hh
-    square += [(x, y), (x, y - r), (x, c[1]), (x, y - h + r)]
-
-    if vertices > 16:
-        # use b-spline for rounding
-        rounded = bspline(square, vertices+1)
-        # offset
-        rounded = rounded[:-1]
-        offset = vertices / 8
-        a = rounded[(vertices-offset):]
-        b = rounded[:(vertices-offset)]
-        rounded = a + b
-    else:
-        rounded = square
-
-    # add z
-    rounded = [(r[0], r[1], z) for r in rounded]
-    return rounded
 
 def roundP(vList, precision):
     rounded = []
@@ -398,53 +204,6 @@ def shapeMesh(points, width, height, vertices, center, z, reverse=False):
         edgeLoops = reversed(edgeLoops)
 
     return edgeLoops
-
-# interpolate outer pot to accommodate hole for spout
-def splineBetweenLoopGroups(a, b, sampleSize, centerZ, heightZ):
-    lenSample = min([len(a), len(b)])
-    sample = a[-lenSample:] + b[:lenSample]
-    xs = [d[0] for d in sample]
-    ys = [d[1] for d in sample]
-    zs = [d[2] for d in sample]
-    cs = [d[3] for d in sample]
-    xSplined = bspline(xs, n=1000, periodic=False)
-    ySplined = bspline(ys, n=1000, periodic=False)
-    zSplined = bspline(zs, n=1000, periodic=False)
-    cSplined = bspline(cs, n=1000, periodic=False)
-    z0 = centerZ - heightZ*0.5
-    z1 = centerZ + heightZ*0.5
-    zDelta = zs[-1] - zs[0]
-    direction = zDelta / abs(zDelta)
-    if direction < 0:
-        zt = z0
-        z0 = z1
-        z1 = zt
-    zStartIndex = False
-    zEndIndex = False
-    for i, z in enumerate(zSplined):
-        if zStartIndex is False and (z >= z0 and direction >= 0 or z <= z0 and direction < 0):
-            zStartIndex = i
-        elif zStartIndex is not False and zEndIndex is False and (z > z1 and direction >= 0 or z < z1 and direction < 0):
-            zEndIndex = i - 1
-    splined = []
-    for i in range(sampleSize):
-        percent = 1.0 * i / (sampleSize-1)
-        index = lerp(zStartIndex, zEndIndex, percent)
-        index = int(round(index))
-        x = xSplined[index]
-        y = ySplined[index]
-        z = zSplined[index]
-        c = cSplined[index]
-        splined.append((x, y, z, c))
-    return splined
-
-def translateLoop(loop, v):
-    newLoop = []
-    tx, ty, tz = v
-    for l in loop:
-        x, y, z = l
-        newLoop.append((x+tx, y+ty, z+tz))
-    return newLoop
 
 def translatePoint(p, degrees, distance):
     radians = math.radians(degrees)
