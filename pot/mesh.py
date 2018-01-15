@@ -82,7 +82,7 @@ TOP_HOLE_WIDTH = WIDTH*BODY_TOP_INSET*0.725-ER2
 TOP_HOLE_LENGTH = LENGTH*BODY_TOP_INSET*0.575-ER2
 TOP_HOLE_WIDTH_INNER = TOP_HOLE_WIDTH - 7.5
 TOP_HOLE_LENGTH_INNER = TOP_HOLE_LENGTH - 7.5
-TOP_HOLE_OUTER_HEIGHT = BODY_HEIGHT - 4.0
+TOP_HOLE_OUTER_HEIGHT = BODY_HEIGHT - 6.0
 TOP_HOLE_INNER_HEIGHT = TOP_HOLE_OUTER_HEIGHT - 4.0
 print "Top opening is %scm x %scm" % (TOP_HOLE_LENGTH_INNER*0.1, TOP_HOLE_WIDTH_INNER*0.1)
 POT_TOP = [
@@ -650,3 +650,17 @@ print "Writing to file..."
 with open(OUTPUT_FILE, 'w') as f:
     json.dump(data, f)
     print "Wrote to file %s" % OUTPUT_FILE
+
+# Write some config for the pot top
+LID_CONFIG_FILE = "pot_lid_config.json"
+lidConfig = {
+    "shape": SHAPE_HOLE, # the shape of the hole
+    "center": TOP_CENTER, # the x,y center of the hole
+    "z": TOP_HOLE_OUTER_HEIGHT, # the z of the lid
+    "height": BODY_HEIGHT - TOP_HOLE_OUTER_HEIGHT,
+    "outer": POT_TOP[1], # the top/outer of the lid
+    "inner": POT_TOP[3] # the bottom/inner of the lid
+}
+with open(LID_CONFIG_FILE, 'w') as f:
+    json.dump(lidConfig, f)
+    print "Wrote to file %s" % LID_CONFIG_FILE
