@@ -11,6 +11,7 @@ INPUT_FILE = "../pot/pot_lid_config.json"
 OUTPUT_FILE = "mesh.json"
 # IMG_MAP_FILE = "imgMap.png"
 PRECISION = 8
+SHOW_ACTUAL_POSITION = False
 
 # cup config in mm
 BASE_VERTICES = 16 # don't change this as it will break rounded rectangles
@@ -19,9 +20,10 @@ SUBDIVIDE_X = 0
 VERTICES_PER_EDGE_LOOP = BASE_VERTICES * 2**SUBDIVIDE_X
 print "%s vertices per edge loop" % VERTICES_PER_EDGE_LOOP
 
+CENTER = (0, 0, 0)
 EDGE_RADIUS = 4.0
 THICKNESS = 6.0
-REDUCE_AMOUNT = 2.0 # increase this to reduce the width/length
+REDUCE_AMOUNT = 1.5 # increase this to reduce the width/length
 
 BASE_HEIGHT = 6.0
 BASE_THICKNESS = 4.0
@@ -38,12 +40,14 @@ lidConfig = {}
 with open(INPUT_FILE) as f:
     lidConfig = json.load(f)
 SHAPE = lidConfig["shape"]
-# CENTER = lidConfig["center"]
-CENTER = (0, 0, 0)
-Z = lidConfig["z"]
+OFFSET_X = lidConfig["offsetX"]
+OFFSET_Z = lidConfig["z"]
 TOP_HEIGHT = lidConfig["height"]
 OUTER_L, OUTER_W, _Z = tuple(lidConfig["outer"])
 INNER_L, INNER_W, _Z = tuple(lidConfig["inner"])
+
+if SHOW_ACTUAL_POSITION:
+    CENTER = (CENTER[0]+OFFSET_X/2.0, CENTER[1], CENTER[1]+OFFSET_Z-BASE_HEIGHT)
 
 print "Top height: %s" % TOP_HEIGHT
 

@@ -11,9 +11,13 @@ import os
 
 # bpy.app.debug_wm = True
 
+filenames = ["pot/mesh.json", "pot_lid/mesh_actual.json"]
+
 data = []
-with open(bpy.path.abspath("//mesh.json")) as f:
-    data = json.load(f)
+for filename in filenames:
+    with open(bpy.path.abspath("//"+filename)) as f:
+        d = json.load(f)
+        data += d
 
 # blend starts here
 scene = bpy.context.scene

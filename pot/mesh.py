@@ -655,7 +655,7 @@ with open(OUTPUT_FILE, 'w') as f:
 LID_CONFIG_FILE = "pot_lid_config.json"
 lidConfig = {
     "shape": SHAPE_HOLE, # the shape of the hole
-    "center": TOP_CENTER, # the x,y center of the hole
+    "offsetX": TOP_CENTER[0], 
     "z": TOP_HOLE_OUTER_HEIGHT, # the z of the lid
     "height": BODY_HEIGHT - TOP_HOLE_OUTER_HEIGHT,
     "outer": POT_TOP[1], # the top/outer of the lid
