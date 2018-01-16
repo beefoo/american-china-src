@@ -80,6 +80,107 @@ def displaceWithMap(loops, filename, displaceAmount, minZ):
         displaceLoops.append(displaceLoop)
     return displaceLoops
 
+def ellipse(vertices, center, r1, r2, z):
+    verts = []
+    edgesPerSide = vertices / 4
+    # add the top
+    for i in range(edgesPerSide):
+        x = 1.0 * i / edgesPerSide * 2 - 1
+        verts.append((x,-1.0))
+    # right
+    for i in range(edgesPerSide):
+        y = 1.0 * i / edgesPerSide * 2 - 1
+        verts.append((1.0, y))
+    # bottom
+    for i in range(edgesPerSide):
+        x = 1.0 * i / edgesPerSide * 2 - 1
+        verts.append((-x, 1.0))
+    # left
+    for i in range(edgesPerSide):
+        y = 1.0 * i / edgesPerSide * 2 - 1
+        verts.append((-1.0, -y))
+
+    e = []
+    for v in verts:
+        x = v[0]
+        y = v[1]
+        u = x * math.sqrt(1.0 - 0.5 * (y * y))
+        v = y * math.sqrt(1.0 - 0.5 * (x * x))
+        # convert to actual unit
+        u = u * r1 + center[0]
+        v = v * r2 + center[1]
+        e.append((u,v,z))
+
+    return e
+
+def ellipseMesh(vertices, center, r1, r2, z, reverse=False):
+    verts = []
+    edgesPerSide = vertices / 4
+
+    # create a rectangular matrix of vertices mapped to circular disc coordinates (UV)
+    # https://stackoverflow.com/questions/13211595/how-can-i-convert-coordinates-on-a-circle-to-coordinates-on-a-square
+    for row in range(edgesPerSide+1):
+        for col in range(edgesPerSide+1):
+            # x, y is between -1 and 1
+            x = 1.0 * col / edgesPerSide * 2 - 1
+            y = 1.0 * row / edgesPerSide * 2 - 1
+            u = x * math.sqrt(1.0 - 0.5 * (y * y))
+            v = y * math.sqrt(1.0 - 0.5 * (x * x))
+            # convert to actual unit
+            u = u * r1 + center[0]
+            v = v * r2 + center[1]
+            verts.append((u,v,z))
+
+    vertLen = len(verts)
+    centerIndex = int(vertLen / 2)
+    centerRow = edgesPerSide / 2
+    centerCol = edgesPerSide/ 2
+
+    # start with one point at the center
+    edgeLoops = [[verts[centerIndex]]]
+
+    # add loops until we reach outer loop
+    edges = 2
+    while edges <= edgesPerSide:
+        edgeLoop = []
+        r = edges/2
+        # add top
+        for i in range(edges):
+            row = centerRow - r
+            col = centerCol + lerp(-r, r, 1.0 * i / edges)
+            i = int(row*(edgesPerSide+1) + col)
+            edgeLoop.append(verts[i])
+
+        # add right
+        for i in range(edges):
+            row = centerRow + lerp(-r, r, 1.0 * i / edges)
+            col = centerCol + r
+            i = int(row*(edgesPerSide+1) + col)
+            edgeLoop.append(verts[i])
+
+        # add bottom
+        for i in range(edges):
+            row = centerRow + r
+            col = centerCol + lerp(r, -r, 1.0 * i / edges)
+            i = int(row*(edgesPerSide+1) + col)
+            edgeLoop.append(verts[i])
+
+        # add left
+        for i in range(edges):
+            row = centerRow + lerp(r, -r, 1.0 * i / edges)
+            col = centerCol - r
+            i = int(row*(edgesPerSide+1) + col)
+            edgeLoop.append(verts[i])
+
+        # add edges
+        edgeLoops.append(edgeLoop)
+        edges += 2
+
+    if reverse:
+        edgeLoops = reversed(edgeLoops)
+
+    return edgeLoops
+
 def lerp(a, b, mu):
     return (b-a) * mu + a
 
