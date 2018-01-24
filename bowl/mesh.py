@@ -34,7 +34,7 @@ BASE_WIDTH = 55.0
 BASE_HEIGHT = 9.0
 EDGE_RADIUS = 4.0
 THICKNESS = 5.0
-MAX_WAVE = 6.8
+MAX_WAVE = 6.0
 BASE_EDGE_RADIUS = 2.0
 
 # calculations
@@ -103,7 +103,7 @@ for i, d in enumerate(displaceData):
     x += w
 
 # make the data quadratic
-power = 0.75 # make this > 1 to exaggerate waves, make this < 1 to make waves closer in size to each other
+power = 1.333 # make this > 1 to exaggerate waves, make this < 1 to make waves closer in size to each other
 for i, d in enumerate(displaceData):
     y = d[1] * 2
     ay = abs(y)
@@ -126,8 +126,8 @@ heights = [d[1] for d in BOWL]
 xs = [1.0 * i / (bowlLen-1)  for i, d in enumerate(BOWL)]
 splinedWidths = bspline(list(zip(xs, widths)), n=targetEdgeCount, degree=3, periodic=False)
 splinedHeights = bspline(list(zip(xs, heights)), n=targetEdgeCount, degree=3, periodic=False)
-splinedWidthsHighres = bspline(list(zip(xs, widths)), n=1000, degree=3, periodic=False)
-splinedHeightsHighres = bspline(list(zip(xs, heights)), n=1000, degree=3, periodic=False)
+splinedWidthsHighres = bspline(list(zip(xs, widths)), n=highresEdgeCount, degree=3, periodic=False)
+splinedHeightsHighres = bspline(list(zip(xs, heights)), n=highresEdgeCount, degree=3, periodic=False)
 
 # build the mesh
 mesh = Mesh()
