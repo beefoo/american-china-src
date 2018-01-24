@@ -25,13 +25,13 @@ EDGE_RADIUS = 4.0
 THICKNESS = 6.0
 REDUCE_AMOUNT = 1.5 # increase this to reduce the width/length
 
-BASE_HEIGHT = 6.0
-BASE_THICKNESS = 4.0
+BASE_HEIGHT = 4.0
+BASE_THICKNESS = 3.5
 BASE_EDGE = 2.0
 IMG_OFFSET_AMOUNT = 4.0
 DIME_WIDTH = 18.0
 
-HANDLE_TOP_WIDTH = DIME_WIDTH
+HANDLE_TOP_WIDTH = DIME_WIDTH + 2.0
 HANDLE_TOP_HEIGHT = 6.0
 HANDLE_NECK_WIDTH = 9.0
 HANDLE_NECK_HEIGHT = 6.0
@@ -60,11 +60,11 @@ LID = [
     (INNER_L-BT2, INNER_W-BT2, BASE_HEIGHT-BASE_EDGE),  # base inner top edge after
     (INNER_L-BT2, INNER_W-BT2, BASE_EDGE),  # base inner bottom edge before
     (INNER_L-BT2, INNER_W-BT2, 0),  # base inner bottom
-    (INNER_L-BT2+BE2, INNER_W-BT2+BE2, 0),  # base inner bottom edge after
-    (INNER_L-BE2, INNER_W-BE2, 0),  # base outer bottom edge before
+    # (INNER_L-BT2+BE2, INNER_W-BT2+BE2, 0),  # base inner bottom edge after
+    # (INNER_L-BE2, INNER_W-BE2, 0),  # base outer bottom edge before
     (INNER_L, INNER_W, 0), # base outer bottom
     (INNER_L, INNER_W, BASE_EDGE), # base outer bottom edge after
-    (INNER_L, INNER_W, BASE_HEIGHT-BASE_EDGE), # base outer top edge before
+    # (INNER_L, INNER_W, BASE_HEIGHT-BASE_EDGE), # base outer top edge before
     (INNER_L, INNER_W, BASE_HEIGHT), # base outer top
     (INNER_L+BE2, INNER_W+BE2, BASE_HEIGHT), # base outer top edge after
     # (OUTER_L-BE2, OUTER_W-BE2, BASE_HEIGHT), # body bottom edge before
