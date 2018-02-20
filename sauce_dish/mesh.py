@@ -30,12 +30,13 @@ CENTER = (0, 0, 0)
 PRECISION = 8
 LENGTH = 146.0
 WIDTH = 72.0
-HEIGHT = 25.0
-BASE_HEIGHT = 6.0
+HEIGHT = 28.0
+BASE_HEIGHT = 7.0
 EDGE_RADIUS = 4.0
 CORNER_RADIUS = 6.0
 THICKNESS = 6.0
 BASE_THICKNESS = 6.0
+DIVIDER_THICKNESS = 6.0
 
 # calculations
 BASE_LENGTH = LENGTH - 6.0 * 2
@@ -43,6 +44,13 @@ BASE_WIDTH = WIDTH - 6.0 * 2
 T2 = THICKNESS * 2
 ER2 = EDGE_RADIUS * 2
 BT2 = BASE_THICKNESS * 2
+
+AVAILABLE_CENTER_SPACE = WIDTH - T2 - DIVIDER_THICKNESS
+SPACE_LEFT = AVAILABLE_CENTER_SPACE * PERCENT
+SPACE_RIGHT = AVAILABLE_CENTER_SPACE * (1.0-PERCENT)
+DIVIDER_PADDING = 2.0
+DIVIDER_LEFT = WIDTH * -0.5 + THICKNESS + SPACE_LEFT - DIVIDER_PADDING
+DIVIDER_RIGHT = DIVIDER_LEFT + DIVIDER_PADDING + DIVIDER_THICKNESS + DIVIDER_PADDING
 
 DISH = [
     [BASE_LENGTH-BT2-BT2-ER2, BASE_WIDTH-BT2-BT2-ER2, BASE_HEIGHT], # start at inner base top inner edge
@@ -70,9 +78,6 @@ splinedLengths = bspline(list(zip(domain, xs)), n=targetEdgeCount, degree=3, per
 splinedWidths = bspline(list(zip(domain, ys)), n=targetEdgeCount, degree=3, periodic=False)
 splinedHeights = bspline(list(zip(domain, zs)), n=targetEdgeCount, degree=3, periodic=False)
 
-# build the mesh
-mesh = Mesh()
-
 # get spline data
 loopData = []
 for i in range(targetEdgeCount):
@@ -80,6 +85,9 @@ for i in range(targetEdgeCount):
     y = splinedWidths[i][1]
     z = splinedHeights[i][1]
     loopData.append((x, y, z))
+
+# build the mesh
+mesh = Mesh()
 
 # add the loops before the displacement
 for i, d in enumerate(loopData):
