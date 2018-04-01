@@ -206,8 +206,8 @@ removeIndex = len(mesh.edgeLoops)-baseInsetLen-1
 mesh.removeLoop(removeIndex)
 
 # Add base stand
-STAND_HEIGHT = 2.0
-STAND_THICKNESS = 3.0
+STAND_HEIGHT = 4.0
+STAND_THICKNESS = 4.0
 STAND_OFFSET = 3.0
 r1 = baseRadiusX - INSET_WIDTH - STAND_THICKNESS*0.5 - STAND_OFFSET*0.5
 r2 = baseRadiusY - INSET_WIDTH - STAND_THICKNESS*0.5 - STAND_OFFSET*0.5
