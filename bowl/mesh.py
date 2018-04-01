@@ -38,11 +38,12 @@ MAX_WAVE = 6.0
 BASE_EDGE_RADIUS = 2.0
 
 # calculations
-INSET_BASE_WIDTH = BASE_WIDTH - 10.0
+INSET_BASE_WIDTH = BASE_WIDTH - 8.0
 INSET_BASE_HEIGHT = BASE_HEIGHT * 0.5
 INNER_BASE_WIDTH = BASE_WIDTH - 6.0
 BODY_HEIGHT = (HEIGHT - BASE_HEIGHT) * 0.1 + BASE_HEIGHT
 BODY_WIDTH = WIDTH * 0.8
+INNER_INSET_BASE_WIDTH = INSET_BASE_WIDTH * 0.5
 
 BOWL = [
     [INSET_BASE_WIDTH - EDGE_RADIUS*2, INSET_BASE_HEIGHT],      # 0, start with base inset edge
@@ -58,8 +59,8 @@ BOWL = [
     [WIDTH-THICKNESS*2, HEIGHT],                                # 10, move in to inner top; STOP DISPLACEMENT HERE
     [WIDTH-THICKNESS*2, HEIGHT - EDGE_RADIUS],                  # 11, move in to inner top edge
     [BODY_WIDTH-THICKNESS*2, BODY_HEIGHT],                      # 12, move down and in to inner body
-    [INSET_BASE_WIDTH, BASE_HEIGHT+THICKNESS],                  # 13, move down and in to inner base
-    [INSET_BASE_WIDTH - EDGE_RADIUS*2, BASE_HEIGHT+THICKNESS]   # 14, move in to inner base edge
+    [INNER_INSET_BASE_WIDTH, BASE_HEIGHT+THICKNESS],                  # 13, move down and in to inner base
+    [INNER_INSET_BASE_WIDTH - EDGE_RADIUS*2, BASE_HEIGHT+THICKNESS]   # 14, move in to inner base edge
 ]
 bowlLen = len(BOWL)
 DISPLACE_START = 6
