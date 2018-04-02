@@ -26,7 +26,7 @@ THICKNESS = 6.0
 REDUCE_AMOUNT = 1.5 # increase this to reduce the width/length
 
 BASE_HEIGHT = 6.0
-BASE_THICKNESS = 3.5
+BASE_THICKNESS = 4.0
 BASE_EDGE = 2.0
 IMG_OFFSET_AMOUNT = 4.0
 DIME_WIDTH = 18.0
