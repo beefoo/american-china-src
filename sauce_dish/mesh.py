@@ -20,9 +20,7 @@ PERCENT = args.PERCENT
 
 # data config
 BASE_VERTICES = 16 # don't change this as it will break rounded rectangles
-SUBDIVIDE_Y = 2 # will subdivide base vertices B * 2^x
-SUBDIVIDE_X = 4
-VERTICES_PER_EDGE_LOOP = BASE_VERTICES * 2**SUBDIVIDE_X
+VERTICES_PER_EDGE_LOOP = BASE_VERTICES
 print "%s vertices per edge loop" % VERTICES_PER_EDGE_LOOP
 
 # cup config in mm
@@ -30,7 +28,7 @@ CENTER = (0, 0, 0)
 PRECISION = 8
 LENGTH = 146.0
 WIDTH = 72.0
-HEIGHT = 28.0
+HEIGHT = 32.0
 BASE_HEIGHT = 7.0
 EDGE_RADIUS = 4.0
 CORNER_RADIUS = 6.0
@@ -63,43 +61,43 @@ DISH = [
     [LENGTH, WIDTH, HEIGHT], # move up to body top
     [LENGTH-BT2, WIDTH-BT2, HEIGHT], # move in to body top inner
     [LENGTH-BT2, WIDTH-BT2, HEIGHT-EDGE_RADIUS], # move down to body top inner edge
-    [LENGTH-BT2, WIDTH-BT2, BASE_HEIGHT+THICKNESS], # move down to body bottom inner edge
-    [LENGTH-BT2-ER2, WIDTH-BT2-ER2, BASE_HEIGHT+THICKNESS] # move in to body bottom inset edge
+    [BASE_LENGTH-BT2, BASE_WIDTH-BT2, BASE_HEIGHT+THICKNESS], # move down to body bottom inner edge
+    [BASE_LENGTH-BT2-ER2, BASE_WIDTH-BT2-ER2, BASE_HEIGHT+THICKNESS] # move in to body bottom inset edge
 ]
 dishLen = len(DISH)
-targetEdgeCount = dishLen * 2**SUBDIVIDE_Y
 
-# interpolate bowl data
-xs = [d[0] for d in DISH]
-ys = [d[1] for d in DISH]
-zs = [d[2] for d in DISH]
-domain = [1.0 * i / (dishLen-1)  for i, d in enumerate(DISH)]
-splinedLengths = bspline(list(zip(domain, xs)), n=targetEdgeCount, degree=3, periodic=False)
-splinedWidths = bspline(list(zip(domain, ys)), n=targetEdgeCount, degree=3, periodic=False)
-splinedHeights = bspline(list(zip(domain, zs)), n=targetEdgeCount, degree=3, periodic=False)
+# # interpolate bowl data
+# targetEdgeCount = dishLen * 2**SUBDIVIDE_Y
+# xs = [d[0] for d in DISH]
+# ys = [d[1] for d in DISH]
+# zs = [d[2] for d in DISH]
+# domain = [1.0 * i / (dishLen-1)  for i, d in enumerate(DISH)]
+# splinedLengths = bspline(list(zip(domain, xs)), n=targetEdgeCount, degree=3, periodic=False)
+# splinedWidths = bspline(list(zip(domain, ys)), n=targetEdgeCount, degree=3, periodic=False)
+# splinedHeights = bspline(list(zip(domain, zs)), n=targetEdgeCount, degree=3, periodic=False)
 
-# get spline data
-loopData = []
-for i in range(targetEdgeCount):
-    x = splinedLengths[i][1]
-    y = splinedWidths[i][1]
-    z = splinedHeights[i][1]
-    loopData.append((x, y, z))
+# # get spline data
+# loopData = []
+# for i in range(targetEdgeCount):
+#     x = splinedLengths[i][1]
+#     y = splinedWidths[i][1]
+#     z = splinedHeights[i][1]
+#     loopData.append((x, y, z))
 
 # build the mesh
 mesh = Mesh()
 
-# add the loops before the displacement
-for i, d in enumerate(loopData):
+# add the loops
+for i, d in enumerate(DISH):
     x, y, z = d
     if i <= 0:
-        loops = roundedRectMesh(VERTICES_PER_EDGE_LOOP, CENTER, x, y, z, CORNER_RADIUS)
+        loops = roundedRectMesh(CENTER, x, y, z, CORNER_RADIUS, DIVIDER_LEFT, DIVIDER_RIGHT, EDGE_RADIUS)
         mesh.addEdgeLoops(loops)
-    elif i >= targetEdgeCount-1:
-        loops = roundedRectMesh(VERTICES_PER_EDGE_LOOP, CENTER, x, y, z, CORNER_RADIUS, reverse=True)
+    elif i >= dishLen-1:
+        loops = roundedRectMesh(CENTER, x, y, z, CORNER_RADIUS, DIVIDER_LEFT, DIVIDER_RIGHT, EDGE_RADIUS, reverse=True)
         mesh.addEdgeLoops(loops)
     else:
-        loop = roundedRect(VERTICES_PER_EDGE_LOOP, CENTER, x, y, z, CORNER_RADIUS)
+        loop = roundedRect(CENTER, x, y, z, CORNER_RADIUS, DIVIDER_LEFT, DIVIDER_RIGHT)
         mesh.addEdgeLoop(loop)
 
 print "Calculating faces..."
@@ -114,7 +112,7 @@ data = [
         "edges": [],
         "faces": mesh.faces,
         "location": CENTER,
-        "flipFaces": range((VERTICES_PER_EDGE_LOOP/4)**2)
+        "flipFaces": range(15)
     }
 ]
 

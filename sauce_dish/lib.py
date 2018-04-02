@@ -48,81 +48,69 @@ def lerp(a, b, mu):
 def norm(value, a, b):
     return 1.0 * (value - a) / (b - a)
 
-def roundedRect(vertices, c, w, h, z, r):
-    rect = []
+def rect(c, w, h, z, dl, dr):
+    loop = []
     hw = w * 0.5
     hh = h * 0.5
 
     # top left -> top right
     y = c[1] - hh
     x = c[0] - hw
-    rect += [(x, y), (x + r, y), (c[0], y), (x + w - r, y)]
+    loop += [(x, y), (dl, y), (dr, y)]
+    if x > dl:
+        print "Warning divider is too far left"
     # top right to bottom right
     x = c[0] + hw
     y = c[1] - hh
-    rect += [(x, y), (x, y+r), (x, c[1]), (x, y + h - r)]
+    loop += [(x, y)]
     # bottom right to bottom left
     y = c[1] + hh
     x = c[0] + hw
-    rect += [(x, y), (x - r, y), (c[0], y), (x - w + r, y)]
+    loop += [(x, y), (dr, y), (dl, y)]
     # bottom left to top left
     x = c[0] - hw
     y = c[1] + hh
-    rect += [(x, y), (x, y - r), (x, c[1]), (x, y - h + r)]
-
-    if vertices > 16:
-        # use b-spline for rounding
-        rounded = bspline(rect, vertices+1)
-        # offset
-        rounded = rounded[:-1]
-        offset = vertices / 8
-        a = rounded[(vertices-offset):]
-        b = rounded[:(vertices-offset)]
-        rounded = a + b
-    else:
-        rounded = rect
+    loop += [(x, y)]
 
     # add z
-    rounded = [(r[0], r[1], z) for r in rounded]
+    loop = [(r[0], r[1], z) for r in loop]
+    return loop
+
+def roundedRect(c, w, h, z, r, dl, dr):
+    loop = []
+    hw = w * 0.5
+    hh = h * 0.5
+
+    # top left -> top right
+    y = c[1] - hh
+    x = c[0] - hw
+    loop += [(x, y), (x + r, y), (dl, y), (dr, y), (x + w - r, y)]
+    # top right to bottom right
+    x = c[0] + hw
+    y = c[1] - hh
+    loop += [(x, y), (x, y+r), (x, y + h - r)]
+    # bottom right to bottom left
+    y = c[1] + hh
+    x = c[0] + hw
+    loop += [(x, y), (x - r, y), (dr, y), (dl, y), (x - w + r, y)]
+    # bottom left to top left
+    x = c[0] - hw
+    y = c[1] + hh
+    loop += [(x, y), (x, y - r), (x, y - h + r)]
+
+    # add z
+    rounded = [(r[0], r[1], z) for r in loop]
     return rounded
 
-def roundedRectMesh(vertices, c, w, h, z, r, reverse=False):
-    loops = [[(c[0], c[1], z)]] # start as a point in the center
-    vertPerSide = 2
-    targetVertPerSide = vertices / 4
-    steps = targetVertPerSide / 2
-    widthStep = w / steps
-    heightStep = h / steps
-    radiusStep = r / steps
-    vw = widthStep
-    vh = heightStep
-    vr = radiusStep
-
-    while vertPerSide <= targetVertPerSide:
-        if vertPerSide >= 4:
-            loops.append(roundedRect(vertPerSide*4, c, vw, vh, z, vr))
-        # A simple 8-point rectangle
-        else:
-            loops.append([
-                (-vw*0.5, -vh*0.5, z),
-                (0, -vh*0.5, z),
-                (vw*0.5, -vh*0.5, z),
-                (vw*0.5, 0, z),
-                (vw*0.5, vh*0.5, z),
-                (0, vh*0.5, z),
-                (-vw*0.5, vh*0.5, z),
-                (-vw*0.5, 0, z),
-            ])
-        vertPerSide += 2
-        vw += widthStep
-        vh += heightStep
-        vr += radiusStep
-
+def roundedRectMesh(c, w, h, z, r, dl, dr, edge, reverse=False):
+    e2 = edge * 2
+    loops = [
+        rect(c, w-e2, h-e2, z, dl, dr),
+        roundedRect(c, w, h, z, r, dl, dr)
+    ]
     if reverse:
         loops = reversed(loops)
-
     return loops
-
 
 def roundP(vList, precision):
     rounded = []
@@ -173,31 +161,23 @@ class Mesh:
                 smallerOffset = indexOffset
                 biggerOffset = indexOffset + aLen
 
-            edgesPerSide = bigger / 4
+            so = smallerOffset
+            bo = biggerOffset
 
-            for i in range(bigger-4):
-                offset = abs(i-1) / (edgesPerSide-1)
-                v1 = i + offset + biggerOffset
-                v2 = v1 + 1
-                v3 = i + offset - offset * 2 + smallerOffset
-                v4 = v3 - 1
-
-                # special case for first
-                if i==0:
-                    v1 = biggerOffset
-                    v2 = v1 + 1
-                    v3 = smallerOffset
-                    v4 = bigger - 1 + biggerOffset
-
-                # special case for reach corner face
-                elif i % (edgesPerSide-1) == 0:
-                    v3 = v2 + 1
-
-                # special case for last
-                elif i==(bigger-5):
-                    v3 = smallerOffset
-
-                faces.append((v1, v2, v3, v4))
+            faces += [
+                (bo, bo+1, so, bo+15),
+                (bo+1, bo+2, so+1, so),
+                (bo+2, bo+3, so+2, so+1),
+                (bo+3, bo+4, so+3, so+2),
+                (bo+4, bo+5, bo+6, so+3),
+                (bo+6, bo+7, so+4, so+3),
+                (bo+7, bo+8, bo+9, so+4),
+                (bo+9, bo+10, so+5, so+4),
+                (bo+10, bo+11, so+6, so+5),
+                (bo+11, bo+12, so+7, so+6),
+                (bo+12, bo+13, bo+14, so+7),
+                (bo+14, bo+15, so, so+7)
+            ]
 
         # equal number of vertices
         else:
@@ -217,19 +197,28 @@ class Mesh:
     def processEdgeloops(self):
         indexOffset = 0
 
+        bottomFaces = [
+            [0, 1, 6, 7],
+            [1, 2, 5, 6],
+            [2, 3, 4, 5]
+        ]
+
         for i, edgeLoop in enumerate(self.edgeLoops):
             # add loop's vertices
             self.verts += edgeLoop
 
-            # if this is the first edge loop and it's a quad, add it's face
-            if i == 0 and len(edgeLoop) == 4:
-                self.faces.append(range(4))
+            # if this is the first edge loop, add the divider's face
+            if i == 0:
+                self.faces += bottomFaces
 
             elif i > 0:
                 prev = self.edgeLoops[i-1]
                 self.joinEdgeLoops(prev, edgeLoop, indexOffset)
                 indexOffset += len(prev)
 
-        # if the last edge loop is a quad, add it's face
-        if len(self.edgeLoops[-1]) == 4:
-            self.faces.append([(i+indexOffset) for i in range(4)])
+        # add the last divider's face
+        topFaces = []
+        for f in bottomFaces:
+            t = [(ff+indexOffset) for ff in f]
+            topFaces.append(t)
+        self.faces += topFaces
