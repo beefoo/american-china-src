@@ -59,12 +59,13 @@ DISH = [
     [BASE_LENGTH, BASE_WIDTH, BASE_HEIGHT], # move out to body bottom
     [LENGTH, WIDTH, HEIGHT-EDGE_RADIUS], # move up to body top edge before
     [LENGTH, WIDTH, HEIGHT], # move up to body top
-    [LENGTH-BT2, WIDTH-BT2, HEIGHT], # move in to body top inner
+    [LENGTH-BT2, WIDTH-BT2, HEIGHT], # move in to body top inner - DIVIDER STARTS HERE
     [LENGTH-BT2, WIDTH-BT2, HEIGHT-EDGE_RADIUS], # move down to body top inner edge
     [BASE_LENGTH-BT2, BASE_WIDTH-BT2, BASE_HEIGHT+THICKNESS], # move down to body bottom inner edge
     [BASE_LENGTH-BT2-ER2, BASE_WIDTH-BT2-ER2, BASE_HEIGHT+THICKNESS] # move in to body bottom inset edge
 ]
 dishLen = len(DISH)
+dividerIndexStart = 8
 
 # # interpolate bowl data
 # targetEdgeCount = dishLen * 2**SUBDIVIDE_Y
