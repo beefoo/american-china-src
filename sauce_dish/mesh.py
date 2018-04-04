@@ -104,6 +104,14 @@ print "Calculating faces..."
 # generate faces from vertices
 mesh.processEdgeloops()
 
+indices = [-2, -7, -13, -21]
+i = indices[-1]
+loopsForDivider = 3
+for j in range(loopsForDivider*2-1):
+    i -= 8
+    indices.append(i)
+mesh.removeFaces(indices)
+
 # save data
 data = [
     {

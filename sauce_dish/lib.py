@@ -222,3 +222,8 @@ class Mesh:
             t = [(ff+indexOffset) for ff in f]
             topFaces.append(t)
         self.faces += topFaces
+
+    def removeFaces(self, indices):
+        for i in indices:
+            self.faces[i] = False
+        self.faces = [f for f in self.faces if f is not False]
