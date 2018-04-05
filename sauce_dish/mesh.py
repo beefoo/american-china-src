@@ -89,8 +89,11 @@ dividerIndexStart = 8
 mesh = Mesh()
 
 # add the loops
+dividerVertexIndexStart = 0
 for i, d in enumerate(DISH):
     x, y, z = d
+    if i == dividerIndexStart:
+        dividerVertexIndexStart = mesh.getVertexCount()
     if i <= 0:
         loops = roundedRectMesh(CENTER, x, y, z, CORNER_RADIUS, DIVIDER_LEFT, DIVIDER_RIGHT, EDGE_RADIUS)
         mesh.addEdgeLoops(loops)
@@ -105,6 +108,7 @@ print "Calculating faces..."
 # generate faces from vertices
 mesh.processEdgeloops()
 
+# remove faces for divider
 indices = [-2, -7, -13, -21]
 i = indices[-1]
 loopsForDivider = 3
@@ -112,6 +116,16 @@ for j in range(loopsForDivider*2-1):
     i -= 8
     indices.append(i)
 mesh.removeFaces(indices)
+
+print "Starting to add divider at vertex %s" % dividerVertexIndexStart
+i = dividerVertexIndexStart
+for j in range(loopsForDivider):
+    tl = i + 2
+    tr = i + 3
+    br = i + 10
+    bl = i + 11
+
+    i += 16
 
 # save data
 data = [

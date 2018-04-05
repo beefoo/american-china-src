@@ -140,6 +140,18 @@ class Mesh:
         for loop in loops:
             self.addEdgeLoop(loop)
 
+    def addFace(self, face):
+        self.faces.append(face)
+
+    def addFaces(self, faces):
+        self.faces += faces
+
+    def addVertices(self, verts):
+        self.verts += verts
+
+    def getVertexCount(self):
+        return sum([len(l) for l in self.edgeLoops])
+
     def joinEdgeLoops(self, loopA, loopB, indexOffset):
         faces = []
         aLen = len(loopA)
