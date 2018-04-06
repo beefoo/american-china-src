@@ -2,7 +2,11 @@
 
 import math
 import numpy as np
+import operator
 from scipy import interpolate
+
+def add(a, b):
+    return tuple(map(operator.add, a, b))
 
 def bspline(cv, n=100, degree=3, periodic=True):
     """ Calculate n samples on a bspline
@@ -147,7 +151,10 @@ class Mesh:
         self.faces += faces
 
     def addVertices(self, verts):
+        index = len(self.verts)
         self.verts += verts
+        # return indices
+        return [(index+i) for i, v in enumerate(verts)]
 
     def getVertexCount(self):
         return sum([len(l) for l in self.edgeLoops])

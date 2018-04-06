@@ -120,10 +120,37 @@ mesh.removeFaces(indices)
 print "Starting to add divider at vertex %s" % dividerVertexIndexStart
 i = dividerVertexIndexStart
 for j in range(loopsForDivider):
-    tl = i + 2
-    tr = i + 3
-    br = i + 10
-    bl = i + 11
+    bl = i + 2
+    br = i + 3
+    tr = i + 10
+    tl = i + 11
+
+    corners = [tl, tr, br, bl]
+    vtl, vtr, vbr, vbl = tuple([mesh.verts[c] for c in corners])
+
+    v1 = add(vtl, (0, -EDGE_RADIUS, 0))
+    v2 = add(vtr, (0, -EDGE_RADIUS, 0))
+    v3 = add(vtl, (0, -EDGE_RADIUS*2, 0))
+    v4 = add(vtr, (0, -EDGE_RADIUS*2, 0))
+    v5 = add(vbl, (0, EDGE_RADIUS*2, 0))
+    v6 = add(vbr, (0, EDGE_RADIUS*2, 0))
+    v7 = add(vbl, (0, EDGE_RADIUS, 0))
+    v8 = add(vbr, (0, EDGE_RADIUS, 0))
+
+    indices = mesh.addVertices([v1, v2, v3, v4, v5, v6, v7, v8])
+    v1, v2, v3, v4, v5, v6, v7, v8 = tuple(indices)
+
+    mesh.addFace((v1, v2, tr, tl))
+    mesh.addFace((v3, v4, v2, v1))
+    mesh.addFace((v5, v6, v4, v3))
+    mesh.addFace((v7, v8, v6, v5))
+    mesh.addFace((bl, br, v8, v7))
+    break
+
+    # # add vertices
+    # verts = [
+    #     vtl
+    # ]
 
     i += 16
 
