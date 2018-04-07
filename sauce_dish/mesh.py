@@ -61,11 +61,13 @@ DISH = [
     [LENGTH, WIDTH, HEIGHT], # move up to body top
     [LENGTH-BT2, WIDTH-BT2, HEIGHT], # move in to body top inner - DIVIDER STARTS HERE
     [LENGTH-BT2, WIDTH-BT2, HEIGHT-EDGE_RADIUS], # move down to body top inner edge
-    [BASE_LENGTH-BT2, BASE_WIDTH-BT2, BASE_HEIGHT+THICKNESS], # move down to body bottom inner edge
+    [lerp(LENGTH-BT2, BASE_LENGTH-BT2, 0.7), lerp(WIDTH-BT2, BASE_WIDTH-BT2, 0.7), BASE_HEIGHT+THICKNESS+EDGE_RADIUS], # move down to body bottom inner edge before
+    [BASE_LENGTH-BT2, BASE_WIDTH-BT2, BASE_HEIGHT+THICKNESS], # move down to body bottom inner
     [BASE_LENGTH-BT2-ER2, BASE_WIDTH-BT2-ER2, BASE_HEIGHT+THICKNESS] # move in to body bottom inset edge
 ]
 dishLen = len(DISH)
 dividerIndexStart = 8
+loopsForDivider = dishLen - dividerIndexStart - 1
 
 # # interpolate bowl data
 # targetEdgeCount = dishLen * 2**SUBDIVIDE_Y
@@ -107,11 +109,11 @@ for i, d in enumerate(DISH):
 print "Calculating faces..."
 # generate faces from vertices
 mesh.processEdgeloops()
+totalOriginalVertCount = len(mesh.verts)
 
 # remove faces for divider
 indices = [-2, -7, -13, -21]
 i = indices[-1]
-loopsForDivider = 3
 for j in range(loopsForDivider*2-1):
     i -= 8
     indices.append(i)
@@ -119,6 +121,7 @@ mesh.removeFaces(indices)
 
 print "Starting to add divider at vertex %s" % dividerVertexIndexStart
 i = dividerVertexIndexStart
+prev = False
 for j in range(loopsForDivider):
     bl = i + 2
     br = i + 3
@@ -128,30 +131,52 @@ for j in range(loopsForDivider):
     corners = [tl, tr, br, bl]
     vtl, vtr, vbr, vbl = tuple([mesh.verts[c] for c in corners])
 
-    v1 = add(vtl, (0, -EDGE_RADIUS, 0))
-    v2 = add(vtr, (0, -EDGE_RADIUS, 0))
-    v3 = add(vtl, (0, -EDGE_RADIUS*2, 0))
-    v4 = add(vtr, (0, -EDGE_RADIUS*2, 0))
-    v5 = add(vbl, (0, EDGE_RADIUS*2, 0))
-    v6 = add(vbr, (0, EDGE_RADIUS*2, 0))
-    v7 = add(vbl, (0, EDGE_RADIUS, 0))
-    v8 = add(vbr, (0, EDGE_RADIUS, 0))
+    verticesToAdd = [
+        add(vtl, (0, -EDGE_RADIUS, 0)),
+        add(vtr, (0, -EDGE_RADIUS, 0)),
+        add(vtl, (0, -EDGE_RADIUS*2, 0)),
+        add(vtr, (0, -EDGE_RADIUS*2, 0)),
+        add(vbl, (0, EDGE_RADIUS*2, 0)),
+        add(vbr, (0, EDGE_RADIUS*2, 0)),
+        add(vbl, (0, EDGE_RADIUS, 0)),
+        add(vbr, (0, EDGE_RADIUS, 0))
+    ]
 
-    indices = mesh.addVertices([v1, v2, v3, v4, v5, v6, v7, v8])
+    if (j < loopsForDivider-1):
+        indices = mesh.addVertices(verticesToAdd)
+    else:
+        # get indices from last two loops
+        l0 = totalOriginalVertCount - 8 # inner loop
+        l1 = totalOriginalVertCount - 8 - 16 # outer loop
+        # indices = [l1+2, l1+3, l0+1, l0+2, l0+6, l0+5, l1+11, l1+10]
+        indices = [l1+11, l1+10, l0+6, l0+5, l0+1, l0+2, l1+2, l1+3]
     v1, v2, v3, v4, v5, v6, v7, v8 = tuple(indices)
 
-    mesh.addFace((v1, v2, tr, tl))
-    mesh.addFace((v3, v4, v2, v1))
-    mesh.addFace((v5, v6, v4, v3))
-    mesh.addFace((v7, v8, v6, v5))
-    mesh.addFace((bl, br, v8, v7))
-    break
+    if not prev:
+        mesh.addFace((v1, v2, tr, tl))
+        mesh.addFace((v3, v4, v2, v1))
+        mesh.addFace((v5, v6, v4, v3))
+        mesh.addFace((v7, v8, v6, v5))
+        mesh.addFace((bl, br, v8, v7))
+    else:
+        ptl, ptr, pv1, pv2, pv3, pv4, pv5, pv6, pv7, pv8, pbl, pbr = tuple(prev)
+        mesh.addFace((tl, v1, pv1, ptl))
+        mesh.addFace((v2, tr, ptr, pv2))
 
-    # # add vertices
-    # verts = [
-    #     vtl
-    # ]
+        mesh.addFace((v1, v3, pv3, pv1))
+        mesh.addFace((v4, v2, pv2, pv4))
 
+        mesh.addFace((v3, v5, pv5, pv3))
+        mesh.addFace((v6, v4, pv4, pv6))
+
+        mesh.addFace((v5, v7, pv7, pv5))
+        mesh.addFace((v8, v6, pv6, pv8))
+
+        mesh.addFace((v7, bl, pbl, pv7))
+        mesh.addFace((br, v8, pv8, pbr))
+
+
+    prev = [tl, tr] + indices[:] + [bl, br]
     i += 16
 
 # save data
