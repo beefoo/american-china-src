@@ -11,7 +11,7 @@ from pprint import pprint
 import sys
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-percent', dest="PERCENT", default=0.086, help="Percent of people serving in military during WW2: 8.6 percent of all Americans and 20 percent of Chinese in America")
+parser.add_argument('-percent', dest="PERCENT", type=float, default=0.086, help="Percent of people serving in military during WW2: 8.6 percent of all Americans and 20 percent of Chinese in America")
 args = parser.parse_args()
 
 # data config
@@ -25,7 +25,7 @@ LENGTH = 146.0
 WIDTH = 72.0
 HEIGHT = 32.0
 BASE_HEIGHT = 7.0
-EDGE_RADIUS = 4.0
+EDGE_RADIUS = 3.0
 CORNER_RADIUS = 6.0
 THICKNESS = 6.0
 BASE_THICKNESS = 5.0
@@ -38,17 +38,22 @@ T2 = THICKNESS * 2
 ER2 = EDGE_RADIUS * 2
 BT2 = BASE_THICKNESS * 2
 
-AVAILABLE_CENTER_SPACE = WIDTH - T2 - DIVIDER_THICKNESS
+AVAILABLE_CENTER_SPACE = BASE_LENGTH - T2 - DIVIDER_THICKNESS
 SPACE_LEFT = AVAILABLE_CENTER_SPACE * PERCENT
 SPACE_RIGHT = AVAILABLE_CENTER_SPACE * (1.0-PERCENT)
-DIVIDER_PADDING = 2.0
-DIVIDER_LEFT = WIDTH * -0.5 + THICKNESS + SPACE_LEFT - DIVIDER_PADDING
+DIVIDER_PADDING = 0.0
+DIVIDER_LEFT = BASE_LENGTH * -0.5 + THICKNESS + SPACE_LEFT - DIVIDER_PADDING
 DIVIDER_RIGHT = DIVIDER_LEFT + DIVIDER_PADDING + DIVIDER_THICKNESS + DIVIDER_PADDING
+DIVIDER_LEFT_EDGE_RADIUS = CORNER_RADIUS
+DIVIDER_RIGHT_EDGE_RADIUS = CORNER_RADIUS
+
+if PERCENT < 0.1:
+    DIVIDER_LEFT_EDGE_RADIUS = 1.0
 
 DISH = [
-    [BASE_LENGTH-BT2-BT2-ER2, BASE_WIDTH-BT2-BT2-ER2, BASE_HEIGHT], # start at inner base top inner edge
-    [BASE_LENGTH-BT2-BT2, BASE_WIDTH-BT2-BT2, BASE_HEIGHT], # move out to inner base top
-    [BASE_LENGTH-BT2-BT2, BASE_WIDTH-BT2-BT2, 0], # move down to inner base bottom
+    [BASE_LENGTH-BT2-BT2-ER2, BASE_WIDTH-BT2-BT2-ER2, BASE_HEIGHT, 1.0], # start at inner base top inner edge
+    [BASE_LENGTH-BT2-BT2, BASE_WIDTH-BT2-BT2, BASE_HEIGHT, CORNER_RADIUS/2], # move out to inner base top
+    [BASE_LENGTH-BT2-BT2, BASE_WIDTH-BT2-BT2, 0, CORNER_RADIUS*0.667], # move down to inner base bottom
     [BASE_LENGTH-BT2, BASE_WIDTH-BT2, 0], # move out to base bottom
     [BASE_LENGTH-BT2, BASE_WIDTH-BT2, BASE_HEIGHT], # move up to base top
     [BASE_LENGTH, BASE_WIDTH, BASE_HEIGHT], # move out to body bottom
@@ -58,7 +63,7 @@ DISH = [
     [LENGTH-BT2, WIDTH-BT2, HEIGHT-EDGE_RADIUS], # move down to body top inner edge
     # [lerp(LENGTH-BT2, BASE_LENGTH-BT2, 0.7), lerp(WIDTH-BT2, BASE_WIDTH-BT2, 0.7), BASE_HEIGHT+THICKNESS+EDGE_RADIUS], # move down to body bottom inner edge before
     [BASE_LENGTH-BT2, BASE_WIDTH-BT2, BASE_HEIGHT+THICKNESS], # move down to body bottom inner
-    [BASE_LENGTH-BT2-ER2, BASE_WIDTH-BT2-ER2, BASE_HEIGHT+THICKNESS] # move in to body bottom inset edge
+    [BASE_LENGTH-BT2-ER2, BASE_WIDTH-BT2-ER2, BASE_HEIGHT+THICKNESS, CORNER_RADIUS/2] # move in to body bottom inset edge
 ]
 dishLen = len(DISH)
 dividerIndexStart = 8
@@ -70,17 +75,21 @@ mesh = Mesh()
 # add the loops
 dividerVertexIndexStart = 0
 for i, d in enumerate(DISH):
-    x, y, z = d
+    if len(d)==4:
+        x, y, z, r = d
+    else:
+        x, y, z = d
+        r = CORNER_RADIUS
     if i == dividerIndexStart:
         dividerVertexIndexStart = mesh.getVertexCount()
     if i <= 0:
-        loops = roundedRectMesh(CENTER, x, y, z, CORNER_RADIUS, DIVIDER_LEFT, DIVIDER_RIGHT, EDGE_RADIUS)
+        loops = roundedRectMesh(CENTER, x, y, z, r, DIVIDER_LEFT, DIVIDER_RIGHT, EDGE_RADIUS, DIVIDER_LEFT_EDGE_RADIUS, DIVIDER_RIGHT_EDGE_RADIUS)
         mesh.addEdgeLoops(loops)
     elif i >= dishLen-1:
-        loops = roundedRectMesh(CENTER, x, y, z, CORNER_RADIUS, DIVIDER_LEFT, DIVIDER_RIGHT, EDGE_RADIUS, reverse=True)
+        loops = roundedRectMesh(CENTER, x, y, z, r, DIVIDER_LEFT, DIVIDER_RIGHT, EDGE_RADIUS, DIVIDER_LEFT_EDGE_RADIUS, DIVIDER_RIGHT_EDGE_RADIUS, reverse=True)
         mesh.addEdgeLoops(loops)
     else:
-        loop = roundedRect(CENTER, x, y, z, CORNER_RADIUS, DIVIDER_LEFT, DIVIDER_RIGHT)
+        loop = roundedRect(CENTER, x, y, z, r, DIVIDER_LEFT, DIVIDER_RIGHT, DIVIDER_LEFT_EDGE_RADIUS, DIVIDER_RIGHT_EDGE_RADIUS)
         mesh.addEdgeLoop(loop)
 
 print "Calculating faces..."

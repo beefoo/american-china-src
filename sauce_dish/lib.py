@@ -53,7 +53,7 @@ def lerp(a, b, mu):
 def norm(value, a, b):
     return 1.0 * (value - a) / (b - a)
 
-def rect(c, w, h, z, r, dl, dr):
+def rect(c, w, h, z, r, dl, dr, dlr, drr):
     loop = []
     hw = w * 0.5
     hh = h * 0.5
@@ -61,9 +61,9 @@ def rect(c, w, h, z, r, dl, dr):
     # top left -> top right
     y = c[1] - hh
     x = c[0] - hw
-    loop += [(x, y), (dl - r, y), (dl, y), (dr, y), (dr + r, y)]
-    if x > (dl - r):
-        print "Warning divider is too far left"
+    if x > (dl - dlr):
+        print "Warning divider is too far left (%s > %s)" % (x, dl-dlr)
+    loop += [(x, y), (dl - dlr, y), (dl, y), (dr, y), (dr + drr, y)]
     # top right to bottom right
     x = c[0] + hw
     y = c[1] - hh
@@ -71,7 +71,7 @@ def rect(c, w, h, z, r, dl, dr):
     # bottom right to bottom left
     y = c[1] + hh
     x = c[0] + hw
-    loop += [(x, y), (dr + r, y), (dr, y), (dl, y), (dl - r, y)]
+    loop += [(x, y), (dr + drr, y), (dr, y), (dl, y), (dl - dlr, y)]
     # bottom left to top left
     x = c[0] - hw
     y = c[1] + hh
@@ -81,7 +81,7 @@ def rect(c, w, h, z, r, dl, dr):
     loop = [(r[0], r[1], z) for r in loop]
     return loop
 
-def roundedRect(c, w, h, z, r, dl, dr):
+def roundedRect(c, w, h, z, r, dl, dr, dlr, drr):
     loop = []
     hw = w * 0.5
     hh = h * 0.5
@@ -89,7 +89,7 @@ def roundedRect(c, w, h, z, r, dl, dr):
     # top left -> top right
     y = c[1] - hh
     x = c[0] - hw
-    loop += [(x, y), (x + r, y), (dl - r, y), (dl, y), (dr, y), (dr + r, y), (x + w - r, y)]
+    loop += [(x, y), (x + r, y), (dl - dlr, y), (dl, y), (dr, y), (dr + drr, y), (x + w - r, y)]
     # top right to bottom right
     x = c[0] + hw
     y = c[1] - hh
@@ -97,7 +97,7 @@ def roundedRect(c, w, h, z, r, dl, dr):
     # bottom right to bottom left
     y = c[1] + hh
     x = c[0] + hw
-    loop += [(x, y), (x - r, y), (dr + r, y), (dr, y), (dl, y), (dl - r, y), (x - w + r, y)]
+    loop += [(x, y), (x - r, y), (dr + drr, y), (dr, y), (dl, y), (dl - dlr, y), (x - w + r, y)]
     # bottom left to top left
     x = c[0] - hw
     y = c[1] + hh
@@ -107,11 +107,10 @@ def roundedRect(c, w, h, z, r, dl, dr):
     rounded = [(r[0], r[1], z) for r in loop]
     return rounded
 
-def roundedRectMesh(c, w, h, z, r, dl, dr, edge, reverse=False):
-    e2 = edge * 2
+def roundedRectMesh(c, w, h, z, r, dl, dr, edge, dlr, drr, reverse=False):
     loops = [
-        rect(c, w-e2, h-e2, z, r, dl, dr),
-        roundedRect(c, w, h, z, r, dl, dr)
+        rect(c, w-edge, h-edge, z, r, dl, dr, dlr, drr),
+        roundedRect(c, w, h, z, r, dl, dr, dlr, drr)
     ]
     if reverse:
         loops = reversed(loops)
