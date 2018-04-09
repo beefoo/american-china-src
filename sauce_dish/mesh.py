@@ -18,11 +18,6 @@ args = parser.parse_args()
 OUTPUT_FILE = "mesh.json"
 PERCENT = args.PERCENT
 
-# data config
-BASE_VERTICES = 16 # don't change this as it will break rounded rectangles
-VERTICES_PER_EDGE_LOOP = BASE_VERTICES
-print "%s vertices per edge loop" % VERTICES_PER_EDGE_LOOP
-
 # cup config in mm
 CENTER = (0, 0, 0)
 PRECISION = 8
@@ -33,7 +28,7 @@ BASE_HEIGHT = 7.0
 EDGE_RADIUS = 4.0
 CORNER_RADIUS = 6.0
 THICKNESS = 6.0
-BASE_THICKNESS = 6.0
+BASE_THICKNESS = 5.0
 DIVIDER_THICKNESS = 6.0
 
 # calculations
@@ -61,31 +56,13 @@ DISH = [
     [LENGTH, WIDTH, HEIGHT], # move up to body top
     [LENGTH-BT2, WIDTH-BT2, HEIGHT], # move in to body top inner - DIVIDER STARTS HERE
     [LENGTH-BT2, WIDTH-BT2, HEIGHT-EDGE_RADIUS], # move down to body top inner edge
-    [lerp(LENGTH-BT2, BASE_LENGTH-BT2, 0.7), lerp(WIDTH-BT2, BASE_WIDTH-BT2, 0.7), BASE_HEIGHT+THICKNESS+EDGE_RADIUS], # move down to body bottom inner edge before
+    # [lerp(LENGTH-BT2, BASE_LENGTH-BT2, 0.7), lerp(WIDTH-BT2, BASE_WIDTH-BT2, 0.7), BASE_HEIGHT+THICKNESS+EDGE_RADIUS], # move down to body bottom inner edge before
     [BASE_LENGTH-BT2, BASE_WIDTH-BT2, BASE_HEIGHT+THICKNESS], # move down to body bottom inner
     [BASE_LENGTH-BT2-ER2, BASE_WIDTH-BT2-ER2, BASE_HEIGHT+THICKNESS] # move in to body bottom inset edge
 ]
 dishLen = len(DISH)
 dividerIndexStart = 8
 loopsForDivider = dishLen - dividerIndexStart - 1
-
-# # interpolate bowl data
-# targetEdgeCount = dishLen * 2**SUBDIVIDE_Y
-# xs = [d[0] for d in DISH]
-# ys = [d[1] for d in DISH]
-# zs = [d[2] for d in DISH]
-# domain = [1.0 * i / (dishLen-1)  for i, d in enumerate(DISH)]
-# splinedLengths = bspline(list(zip(domain, xs)), n=targetEdgeCount, degree=3, periodic=False)
-# splinedWidths = bspline(list(zip(domain, ys)), n=targetEdgeCount, degree=3, periodic=False)
-# splinedHeights = bspline(list(zip(domain, zs)), n=targetEdgeCount, degree=3, periodic=False)
-
-# # get spline data
-# loopData = []
-# for i in range(targetEdgeCount):
-#     x = splinedLengths[i][1]
-#     y = splinedWidths[i][1]
-#     z = splinedHeights[i][1]
-#     loopData.append((x, y, z))
 
 # build the mesh
 mesh = Mesh()
@@ -112,21 +89,22 @@ mesh.processEdgeloops()
 totalOriginalVertCount = len(mesh.verts)
 
 # remove faces for divider
-indices = [-2, -7, -13, -21]
+indices = [-3, -10, -18]
 i = indices[-1]
-for j in range(loopsForDivider*2-1):
-    i -= 8
+for j in range(loopsForDivider*2):
+    i -= 10
     indices.append(i)
 mesh.removeFaces(indices)
 
 print "Starting to add divider at vertex %s" % dividerVertexIndexStart
 i = dividerVertexIndexStart
 prev = False
+indicesPerLoop = 20
 for j in range(loopsForDivider):
-    bl = i + 2
-    br = i + 3
-    tr = i + 10
-    tl = i + 11
+    bl = i + 3
+    br = i + 4
+    tr = i + 13
+    tl = i + 14
 
     corners = [tl, tr, br, bl]
     vtl, vtr, vbr, vbl = tuple([mesh.verts[c] for c in corners])
@@ -146,10 +124,10 @@ for j in range(loopsForDivider):
         indices = mesh.addVertices(verticesToAdd)
     else:
         # get indices from last two loops
-        l0 = totalOriginalVertCount - 8 # inner loop
-        l1 = totalOriginalVertCount - 8 - 16 # outer loop
+        l0 = totalOriginalVertCount - (indicesPerLoop - 8) # inner loop
+        l1 = totalOriginalVertCount - (indicesPerLoop - 8) - indicesPerLoop # outer loop
         # indices = [l1+2, l1+3, l0+1, l0+2, l0+6, l0+5, l1+11, l1+10]
-        indices = [l1+11, l1+10, l0+6, l0+5, l0+1, l0+2, l1+2, l1+3]
+        indices = [l1+14, l1+13, l0+9, l0+8, l0+2, l0+3, l1+3, l1+4]
     v1, v2, v3, v4, v5, v6, v7, v8 = tuple(indices)
 
     if not prev:
@@ -177,7 +155,7 @@ for j in range(loopsForDivider):
 
 
     prev = [tl, tr] + indices[:] + [bl, br]
-    i += 16
+    i += indicesPerLoop
 
 # save data
 data = [
@@ -187,7 +165,7 @@ data = [
         "edges": [],
         "faces": mesh.faces,
         "location": CENTER,
-        "flipFaces": range(15)
+        "flipFaces": range(21)
     }
 ]
 

@@ -3,6 +3,7 @@
 import math
 import numpy as np
 import operator
+from pprint import pprint
 from scipy import interpolate
 
 def add(a, b):
@@ -52,7 +53,7 @@ def lerp(a, b, mu):
 def norm(value, a, b):
     return 1.0 * (value - a) / (b - a)
 
-def rect(c, w, h, z, dl, dr):
+def rect(c, w, h, z, r, dl, dr):
     loop = []
     hw = w * 0.5
     hh = h * 0.5
@@ -60,8 +61,8 @@ def rect(c, w, h, z, dl, dr):
     # top left -> top right
     y = c[1] - hh
     x = c[0] - hw
-    loop += [(x, y), (dl, y), (dr, y)]
-    if x > dl:
+    loop += [(x, y), (dl - r, y), (dl, y), (dr, y), (dr + r, y)]
+    if x > (dl - r):
         print "Warning divider is too far left"
     # top right to bottom right
     x = c[0] + hw
@@ -70,7 +71,7 @@ def rect(c, w, h, z, dl, dr):
     # bottom right to bottom left
     y = c[1] + hh
     x = c[0] + hw
-    loop += [(x, y), (dr, y), (dl, y)]
+    loop += [(x, y), (dr + r, y), (dr, y), (dl, y), (dl - r, y)]
     # bottom left to top left
     x = c[0] - hw
     y = c[1] + hh
@@ -88,7 +89,7 @@ def roundedRect(c, w, h, z, r, dl, dr):
     # top left -> top right
     y = c[1] - hh
     x = c[0] - hw
-    loop += [(x, y), (x + r, y), (dl, y), (dr, y), (x + w - r, y)]
+    loop += [(x, y), (x + r, y), (dl - r, y), (dl, y), (dr, y), (dr + r, y), (x + w - r, y)]
     # top right to bottom right
     x = c[0] + hw
     y = c[1] - hh
@@ -96,7 +97,7 @@ def roundedRect(c, w, h, z, r, dl, dr):
     # bottom right to bottom left
     y = c[1] + hh
     x = c[0] + hw
-    loop += [(x, y), (x - r, y), (dr, y), (dl, y), (x - w + r, y)]
+    loop += [(x, y), (x - r, y), (dr + r, y), (dr, y), (dl, y), (dl - r, y), (x - w + r, y)]
     # bottom left to top left
     x = c[0] - hw
     y = c[1] + hh
@@ -109,7 +110,7 @@ def roundedRect(c, w, h, z, r, dl, dr):
 def roundedRectMesh(c, w, h, z, r, dl, dr, edge, reverse=False):
     e2 = edge * 2
     loops = [
-        rect(c, w-e2, h-e2, z, dl, dr),
+        rect(c, w-e2, h-e2, z, r, dl, dr),
         roundedRect(c, w, h, z, r, dl, dr)
     ]
     if reverse:
@@ -183,20 +184,50 @@ class Mesh:
             so = smallerOffset
             bo = biggerOffset
 
-            faces += [
-                (bo, bo+1, so, bo+15),
-                (bo+1, bo+2, so+1, so),
-                (bo+2, bo+3, so+2, so+1),
-                (bo+3, bo+4, so+3, so+2),
-                (bo+4, bo+5, bo+6, so+3),
-                (bo+6, bo+7, so+4, so+3),
-                (bo+7, bo+8, bo+9, so+4),
-                (bo+9, bo+10, so+5, so+4),
-                (bo+10, bo+11, so+6, so+5),
-                (bo+11, bo+12, so+7, so+6),
-                (bo+12, bo+13, bo+14, so+7),
-                (bo+14, bo+15, so, so+7)
-            ]
+            corners = [6, 8, 14]
+            offsetBigger = 0
+            offsetSmaller = 0
+            for i in range(bigger-4):
+                v1 = i + offsetBigger + biggerOffset
+                v2 = v1 + 1
+                v3 = i + offsetSmaller + smallerOffset
+                v4 = v3 - 1
+
+                # special case for first
+                if i==0:
+                    v4 = bigger - 1 + biggerOffset
+
+                # special case for reach corner face
+                elif i in corners:
+                    v3 = v2 + 1
+                    offsetBigger += 1
+                    offsetSmaller -= 1
+
+                # special case for last
+                elif i==(bigger-5):
+                    v3 = smallerOffset
+
+                faces.append((v1, v2, v3, v4))
+
+
+            # faces += [
+            #     # top
+            #     (bo, bo+1, so, bo+15),
+            #     (bo+1, bo+2, so+1, so),
+            #     (bo+2, bo+3, so+2, so+1),
+            #     (bo+3, bo+4, so+3, so+2),
+            #     # right
+            #     (bo+4, bo+5, bo+6, so+3),
+            #     (bo+6, bo+7, so+4, so+3),
+            #     # bottom
+            #     (bo+7, bo+8, bo+9, so+4),
+            #     (bo+9, bo+10, so+5, so+4),
+            #     (bo+10, bo+11, so+6, so+5),
+            #     (bo+11, bo+12, so+7, so+6),
+            #     # left
+            #     (bo+12, bo+13, bo+14, so+7),
+            #     (bo+14, bo+15, so, so+7)
+            # ]
 
         # equal number of vertices
         else:
@@ -216,11 +247,11 @@ class Mesh:
     def processEdgeloops(self):
         indexOffset = 0
 
-        bottomFaces = [
-            [0, 1, 6, 7],
-            [1, 2, 5, 6],
-            [2, 3, 4, 5]
-        ]
+        bottomFaceCount = 5
+        bl = 11
+        bottomFaces = []
+        for i in range(bottomFaceCount):
+            bottomFaces.append([i, i+1, bl-i-1, bl-i])
 
         for i, edgeLoop in enumerate(self.edgeLoops):
             # add loop's vertices
@@ -228,7 +259,7 @@ class Mesh:
 
             # if this is the first edge loop, add the divider's face
             if i == 0:
-                self.faces += bottomFaces
+                self.faces += tuple(bottomFaces)
 
             elif i > 0:
                 prev = self.edgeLoops[i-1]
@@ -240,7 +271,7 @@ class Mesh:
         for f in bottomFaces:
             t = [(ff+indexOffset) for ff in f]
             topFaces.append(t)
-        self.faces += topFaces
+        self.faces += tuple(topFaces)
 
     def removeFaces(self, indices):
         for i in indices:
