@@ -68,12 +68,12 @@ for d in data:
 
     # Add subsurf modifier
     obj.modifiers.new("subd", type='SUBSURF')
-    obj.modifiers['subd'].levels = 4
-    obj.modifiers["subd"].render_levels = 4
+    obj.modifiers['subd'].levels = 3
+    obj.modifiers["subd"].render_levels = 3
 
-    # # Add decimate modifier to reduce polys
-    # obj.modifiers.new("dec", type='DECIMATE')
-    # obj.modifiers["dec"].ratio = 0.3
+    # Add decimate modifier to reduce polys
+    obj.modifiers.new("dec", type='DECIMATE')
+    obj.modifiers["dec"].ratio = 0.1
 
 # select all objects except camera and lamp
 for obj in bpy.data.objects:

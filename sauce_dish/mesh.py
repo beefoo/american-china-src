@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
 # python mesh.py -percent 0.2
-# python mesh.py -out "both/mesh_08.json" -offset 22
-# python mesh.py -out "both/mesh_20.json" -offset -22 -percent 0.2
+# python mesh.py -out "both/mesh_08.json" -offset -22
+# python mesh.py -out "both/mesh_20.json" -offset 22 -percent 0.2
 
 import argparse
 import csv
