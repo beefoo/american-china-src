@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
 # python mesh.py -percent 0.2
+# python mesh.py -out "both/mesh_08.json" -offset 22
+# python mesh.py -out "both/mesh_20.json" -offset -22 -percent 0.2
 
 import argparse
 import csv
@@ -12,14 +14,17 @@ import sys
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-percent', dest="PERCENT", type=float, default=0.086, help="Percent of people serving in military during WW2: 8.6 percent of all Americans and 20 percent of Chinese in America")
+parser.add_argument('-offset', dest="OFFSET", type=float, default=0, help="Offset the position of the saucer")
+parser.add_argument('-out', dest="OUTPUT_FILE", default="mesh.json", help="Output JSON file")
 args = parser.parse_args()
 
 # data config
-OUTPUT_FILE = "mesh.json"
+OUTPUT_FILE = args.OUTPUT_FILE
+OFFSET = args.OFFSET
 PERCENT = args.PERCENT
 
 # cup config in mm
-CENTER = (0, 0, 0)
+CENTER = (0, OFFSET, 0)
 PRECISION = 8
 LENGTH = 146.0
 WIDTH = 72.0
