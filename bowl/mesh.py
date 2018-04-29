@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# 690 miles of track =~ 1110 km = 37 x 5
+# 690 miles of track =~ 1110 km = 10 × 111
 # 3 laborers died for every 2 miles of track
 # Change, Iris. The Chinese In America. p. 63
 # ~1200 total workers died: http://web.stanford.edu/group/chineserailroad/cgi-bin/wordpress/faqs/
@@ -15,9 +15,17 @@ import sys
 
 # data config
 OUTPUT_FILE = "mesh.json"
-ROWS = 5
-COLS = 37
-VERTICES_PER_EDGE_LOOP = 16
+
+# 1110 km
+# 3 × 370 = 1,110
+# 5 × 222 = 1,110
+# 6 × 185 = 1,110
+# 10 × 111 = 1,110
+# 15 × 74 = 1,110
+# 30 × 37 = 1,110
+ROWS = 15
+COLS = 74
+VERTICES_PER_EDGE_LOOP = COLS
 
 # cup config in mm
 CENTER = (0, 0, 0)
@@ -60,19 +68,18 @@ bowlLen = len(BOWL)
 # build the mesh
 mesh = Mesh()
 
-# add the loops before the displacement
+# add the loops
 for i, d in enumerate(BOWL):
     w, z = tuple(d)
     r = w * 0.5
-    if i <= 0:
-        loops = ellipseMesh(VERTICES_PER_EDGE_LOOP, CENTER, r, r, z)
-        mesh.addEdgeLoops(loops)
-    elif i >= bowlLen-1:
-        loops = ellipseMesh(VERTICES_PER_EDGE_LOOP, CENTER, r, r, z, reverse=True)
-        mesh.addEdgeLoops(loops)
-    else:
-        loop = ellipse(VERTICES_PER_EDGE_LOOP, CENTER, r, r, z)
-        mesh.addEdgeLoop(loop)
+    loop = circle(VERTICES_PER_EDGE_LOOP, CENTER, r, z)
+    # add center in the beginning
+    if i==0:
+        mesh.addEdgeLoop([(CENTER[0], CENTER[1], z)])
+    mesh.addEdgeLoop(loop)
+    # add center at the end
+    if i==bowlLen-1:
+        mesh.addEdgeLoop([(CENTER[0], CENTER[1], z)])
 
 print "Calculating faces..."
 # generate faces from vertices
@@ -86,7 +93,7 @@ data = [
         "edges": [],
         "faces": mesh.faces,
         "location": CENTER,
-        "flipFaces": range((VERTICES_PER_EDGE_LOOP/4)**2)
+        "flipFaces": range(VERTICES_PER_EDGE_LOOP)
     }
 ]
 
