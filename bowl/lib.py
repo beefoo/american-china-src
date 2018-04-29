@@ -4,13 +4,7 @@ import math
 import numpy as np
 from scipy import interpolate
 
-def angleBetweenPoints(p1, p2):
-    deltaX = p2[0] - p1[0]
-    deltaY = p2[1] - p1[1]
-    rad = math.atan2(deltaY, deltaX)
-    return math.degrees(rad)
-
-def bspline(cv, n=100, degree=3, periodic=True):
+def bspline(cv, n=1000, degree=3, periodic=False):
     """ Calculate n samples on a bspline
 
         cv :      Array ov control vertices
@@ -48,6 +42,12 @@ def bspline(cv, n=100, degree=3, periodic=True):
     # Calculate result
     return np.array(interpolate.splev(u, (kv,cv.T,degree))).T.tolist()
 
+def bsplineLerp(plist, mu):
+    count = 10000
+    spl = bspline(plist, n=count)
+    i = int(round(mu*(count-1)))
+    return tuple(spl[i])
+
 def circle(vertices, center, r, z):
     angle = 360.0 / vertices
 
@@ -71,29 +71,6 @@ def roundP(vList, precision):
         t = (round(v[0], precision), round(v[1], precision), round(v[2], precision))
         rounded.append(t)
     return rounded
-
-def savitzkyGolay(y, window_size, order=3, deriv=0, rate=1):
-    try:
-        window_size = np.abs(np.int(window_size))
-        order = np.abs(np.int(order))
-    except ValueError, msg:
-        raise ValueError("window_size and order have to be of type int")
-    if window_size % 2 != 1 or window_size < 1:
-        raise TypeError("window_size size must be a positive odd number")
-    if window_size < order + 2:
-        raise TypeError("window_size is too small for the polynomials order")
-    y = np.array(y)
-    order_range = range(order+1)
-    half_window = (window_size -1) // 2
-    # precompute coefficients
-    b = np.mat([[k**i for i in order_range] for k in range(-half_window, half_window+1)])
-    m = np.linalg.pinv(b).A[deriv] * rate**deriv * math.factorial(deriv)
-    # pad the signal at the extremes with
-    # values taken from the signal itself
-    firstvals = y[0] - np.abs( y[1:half_window+1][::-1] - y[0] )
-    lastvals = y[-1] + np.abs(y[-half_window-1:-1][::-1] - y[-1])
-    y = np.concatenate((firstvals, y, lastvals))
-    return np.convolve( m[::-1], y, mode='valid')
 
 def translatePoint(p, degrees, distance):
     radians = math.radians(degrees)

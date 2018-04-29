@@ -53,17 +53,24 @@ BOWL = [
     [INNER_BASE_WIDTH, 0],                                      # 3, move down and out to inner base
     [BASE_WIDTH, 0],                                            # 4, move out to outer base
     [BASE_WIDTH, BASE_EDGE_RADIUS],                             # 5, move up to outer base edge
-    [BASE_WIDTH, BASE_HEIGHT],                                  # 6, move up to base top; START DISPLACEMENT HERE
-    [BODY_WIDTH, BODY_HEIGHT],                                  # 7, move up and out to body
-    [WIDTH, HEIGHT - EDGE_RADIUS],                              # 8, move up and out to outer top edge
+    [BASE_WIDTH, BASE_HEIGHT],                                  # 6, move up to base top
+    [BODY_WIDTH, BODY_HEIGHT],                                  # 7, move up and out to body, DISPLACE START
+    [WIDTH, HEIGHT - EDGE_RADIUS],                              # 8, move up and out to outer top edge, DISPLACE END
     [WIDTH, HEIGHT],                                            # 9, move up to outer top
-    [WIDTH-THICKNESS*2, HEIGHT],                                # 10, move in to inner top; STOP DISPLACEMENT HERE
+    [WIDTH-THICKNESS*2, HEIGHT],                                # 10, move in to inner top
     [WIDTH-THICKNESS*2, HEIGHT - EDGE_RADIUS],                  # 11, move in to inner top edge
     [BODY_WIDTH-THICKNESS*2, BODY_HEIGHT],                      # 12, move down and in to inner body
     [INNER_INSET_BASE_WIDTH, BASE_HEIGHT+THICKNESS],                  # 13, move down and in to inner base
     [INNER_INSET_BASE_WIDTH - EDGE_RADIUS*2, BASE_HEIGHT+THICKNESS]   # 14, move in to inner base edge
 ]
+
+targetLoops = 150 # lower the number, the taller the holes
+BOWL = bspline(BOWL, n=targetLoops)
 bowlLen = len(BOWL)
+
+displaceOffset = 0.5 # lower the number the lower the holes start/end
+displaceStart = int(round(displaceOffset * (bowlLen-1)))
+displaceEnd = displaceStart + ROWS
 
 # build the mesh
 mesh = Mesh()
@@ -72,6 +79,8 @@ mesh = Mesh()
 for i, d in enumerate(BOWL):
     w, z = tuple(d)
     r = w * 0.5
+    # if displaceStart <= i <= displaceEnd:
+    #     r *= 1.1
     loop = circle(VERTICES_PER_EDGE_LOOP, CENTER, r, z)
     # add center in the beginning
     if i==0:
