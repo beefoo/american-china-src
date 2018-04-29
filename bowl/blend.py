@@ -66,5 +66,5 @@ for d in data:
     obj.modifiers["subd"].render_levels = 4
     #
     # Add decimate modifier to reduce polys
-    obj.modifiers.new("dec", type='DECIMATE')
-    obj.modifiers["dec"].ratio = 0.3
+    # obj.modifiers.new("dec", type='DECIMATE')
+    # obj.modifiers["dec"].ratio = 0.3
