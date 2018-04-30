@@ -37,6 +37,7 @@ BASE_HEIGHT = 9.0
 EDGE_RADIUS = 4.0
 THICKNESS = 5.0
 BASE_EDGE_RADIUS = 2.0
+DISPLACE_AMOUNT = 3.0
 
 # calculations
 INSET_BASE_WIDTH = BASE_WIDTH - 8.0
@@ -71,6 +72,8 @@ bowlLen = len(BOWL)
 displaceOffset = 0.5 # lower the number the lower the holes start/end
 displaceStart = int(round(displaceOffset * (bowlLen-1)))
 displaceEnd = displaceStart + ROWS
+displaceIndexStart = 0
+displaceIndexEnd = 0
 
 # build the mesh
 mesh = Mesh()
@@ -79,16 +82,25 @@ mesh = Mesh()
 for i, d in enumerate(BOWL):
     w, z = tuple(d)
     r = w * 0.5
+
     # if displaceStart <= i <= displaceEnd:
     #     r *= 1.1
+
     loop = circle(VERTICES_PER_EDGE_LOOP, CENTER, r, z)
+
     # add center in the beginning
     if i==0:
         mesh.addEdgeLoop([(CENTER[0], CENTER[1], z)])
+        mesh.addDisplaceLoop(0)
+
     mesh.addEdgeLoop(loop)
+    displace = DISPLACE_AMOUNT if displaceStart <= i < displaceEnd else 0
+    mesh.addDisplaceLoop(displace)
+
     # add center at the end
     if i==bowlLen-1:
         mesh.addEdgeLoop([(CENTER[0], CENTER[1], z)])
+        mesh.addDisplaceLoop(0)
 
 print "Calculating faces..."
 # generate faces from vertices
