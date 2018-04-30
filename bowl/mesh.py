@@ -23,8 +23,8 @@ OUTPUT_FILE = "mesh.json"
 # 10 × 111 = 1,110
 # 15 × 74 = 1,110
 # 30 × 37 = 1,110
-ROWS = 15
-COLS = 74
+ROWS = 10
+COLS = 111
 VERTICES_PER_EDGE_LOOP = COLS
 
 # cup config in mm
@@ -37,7 +37,7 @@ BASE_HEIGHT = 9.0
 EDGE_RADIUS = 4.0
 THICKNESS = 5.0
 BASE_EDGE_RADIUS = 2.0
-DISPLACE_AMOUNT = 3.0
+DISPLACE_AMOUNT = 1.25
 
 # calculations
 INSET_BASE_WIDTH = BASE_WIDTH - 8.0
@@ -65,11 +65,11 @@ BOWL = [
     [INNER_INSET_BASE_WIDTH - EDGE_RADIUS*2, BASE_HEIGHT+THICKNESS]   # 14, move in to inner base edge
 ]
 
-targetLoops = 150 # lower the number, the taller the holes
+targetLoops = 120 # lower the number, the taller the holes
 BOWL = bspline(BOWL, n=targetLoops)
 bowlLen = len(BOWL)
 
-displaceOffset = 0.5 # lower the number the lower the holes start/end
+displaceOffset = 0.515 # lower the number the lower the holes start/end
 displaceStart = int(round(displaceOffset * (bowlLen-1)))
 displaceEnd = displaceStart + ROWS
 displaceIndexStart = 0
