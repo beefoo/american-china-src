@@ -299,8 +299,8 @@ class Mesh:
 
             prev = self.edgeLoops[i-1]
             displace = self.displaceLoops[i]
-            prevDisplace = self.displaceLoops[i-1]
-            displace = max(displace, prevDisplace)
+            # prevDisplace = self.displaceLoops[i-1]
+            # displace = max(displace, prevDisplace)
 
             if displace > 0:
                 self.displaceEdgeLoops(prev, edgeLoop, indexOffset, displace)
