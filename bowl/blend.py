@@ -62,9 +62,9 @@ for d in data:
 
     # Add subsurf modifier
     # obj.modifiers.new("subd", type='SUBSURF')
-    # obj.modifiers['subd'].levels = 4
-    # obj.modifiers["subd"].render_levels = 4
+    # obj.modifiers['subd'].levels = 2
+    # obj.modifiers["subd"].render_levels = 2
     #
-    # Add decimate modifier to reduce polys
+    # # Add decimate modifier to reduce polys
     # obj.modifiers.new("dec", type='DECIMATE')
-    # obj.modifiers["dec"].ratio = 0.3
+    # obj.modifiers["dec"].ratio = 0.5

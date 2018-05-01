@@ -16,15 +16,14 @@ import sys
 # data config
 OUTPUT_FILE = "mesh.json"
 
-# 1110 km
-# 3 × 370 = 1,110
-# 5 × 222 = 1,110
-# 6 × 185 = 1,110
-# 10 × 111 = 1,110
-# 15 × 74 = 1,110
-# 30 × 37 = 1,110
-ROWS = 10
-COLS = 111
+# 3 × 230 = 690
+# 5 × 138 = 690
+# 6 × 115 = 690
+# 10 × 69 = 690
+# 15 × 46 = 690
+# 23 × 30 = 690
+ROWS = 6
+COLS = 115
 VERTICES_PER_EDGE_LOOP = COLS
 
 # cup config in mm
@@ -69,7 +68,7 @@ targetLoops = 120 # lower the number, the taller the holes
 BOWL = bspline(BOWL, n=targetLoops)
 bowlLen = len(BOWL)
 
-displaceOffset = 0.515 # lower the number the lower the holes start/end
+displaceOffset = 0.53 # lower the number the lower the holes start/end
 displaceStart = int(round(displaceOffset * (bowlLen-1)))
 displaceEnd = displaceStart + ROWS
 displaceIndexStart = 0
