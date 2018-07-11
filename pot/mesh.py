@@ -170,7 +170,7 @@ SHAPE_HOLE = [
 
 # config for spout
 SPOUT_VERTICES_PER_EDGE_LOOP = HALF_VERTICES_PER_EDGE_LOOP
-SPOUT_EDGE = 2.5
+SPOUT_EDGE = 1.0
 SPOUT_INNER_WIDTH = 11.0
 SPOUT_INNER_HEIGHT = 10.0
 SPOUT_THICKNESS = 5.0
@@ -181,7 +181,7 @@ SPOUT_TO_X = -(LENGTH*0.95)*0.5 # increase multiplier to make longer
 SPOUT_FROM_X = -(LENGTH*0.85)*0.5 # increase multiplier to move outer spout away from pot body
 SPOUT_INNER_X = -(LENGTH*0.75)*0.5 # adjust this to be in-between inner and outer pot body
 
-SPOUT_ROTATE = 25.0
+SPOUT_ROTATE = 34.0
 SPOUT_ROTATE_CENTER = ((SPOUT_FROM_X + SPOUT_TO_X) * 0.5, 0.0, SPOUT_CENTER_HEIGHT)
 SPOUT_TRANSLATE = (0.0, 0.0, 7.0)
 SPOUT_START_ROTATE = -1.0 * (SPOUT_ROTATE-25.0)
@@ -199,8 +199,8 @@ SPOUT = [
     (SPOUT_INNER_WIDTH, SPOUT_INNER_HEIGHT, SPOUT_CENTER_HEIGHT, (SPOUT_INNER_X, 0, SPOUT_CENTER_HEIGHT), SPOUT_START_ROTATE), # inner
 ]
 
-SPOUT_POINT_Y = 0.25 # increase to make more rounded
-SPOUT_POINT_X = 0.25
+SPOUT_POINT_Y = 0.1 # increase to make more rounded
+SPOUT_POINT_X = 0.1
 SPOUT_MID_Y = (0.5 + SPOUT_POINT_Y) * 0.5
 SPOUT_MID_X = (0.5 + SPOUT_POINT_X) * 0.5
 SPOUT_SHAPE = [
