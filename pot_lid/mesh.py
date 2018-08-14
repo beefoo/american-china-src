@@ -12,6 +12,8 @@ OUTPUT_FILE = "mesh.json"
 # IMG_MAP_FILE = "imgMap.png"
 PRECISION = 8
 SHOW_ACTUAL_POSITION = False
+if SHOW_ACTUAL_POSITION:
+    OUTPUT_FILE = "mesh_actual.json"
 
 # cup config in mm
 BASE_VERTICES = 16 # don't change this as it will break rounded rectangles
