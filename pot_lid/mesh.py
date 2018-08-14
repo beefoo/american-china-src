@@ -31,7 +31,7 @@ BASE_HEIGHT = 6.0
 BASE_THICKNESS = 4.0
 BASE_EDGE = 2.0
 IMG_OFFSET_AMOUNT = 4.0
-DIME_WIDTH = 18.0
+DIME_WIDTH = 17.0
 
 HANDLE_TOP_WIDTH = DIME_WIDTH + 5.0
 HANDLE_TOP_HEIGHT = 6.0
@@ -51,6 +51,10 @@ OUTER_L, OUTER_W, _Z = tuple(lidConfig["outer"])
 INNER_L, INNER_W, _Z = tuple(lidConfig["inner"])
 HANDLE_NECK_Z = BASE_HEIGHT+TOP_HEIGHT
 HER2 = HANDLE_EDGE_RADIUS * 2
+
+SCALE_INNER = 0.95
+INNER_L *= SCALE_INNER
+INNER_W *= SCALE_INNER
 
 if SHOW_ACTUAL_POSITION:
     CENTER = (CENTER[0]+OFFSET_X/2.0, CENTER[1], CENTER[1]+OFFSET_Z-BASE_HEIGHT)
@@ -74,9 +78,9 @@ LID = [
     (INNER_L, INNER_W, BASE_HEIGHT), # base outer top
     (INNER_L+BE2, INNER_W+BE2, BASE_HEIGHT), # base outer top edge after
     # (OUTER_L-BE2, OUTER_W-BE2, BASE_HEIGHT), # body bottom edge before
-    (OUTER_L, OUTER_W, BASE_HEIGHT), # body bottom
-    (OUTER_L, OUTER_W, BASE_HEIGHT+BASE_EDGE), # body bottom edge after
-    (OUTER_L, OUTER_W, BASE_HEIGHT+TOP_HEIGHT-BASE_EDGE), # body top edge before
+    # (OUTER_L, OUTER_W, BASE_HEIGHT), # body bottom
+    # (OUTER_L, OUTER_W, BASE_HEIGHT+BASE_EDGE), # body bottom edge after
+    (OUTER_L, OUTER_W, BASE_HEIGHT+TOP_HEIGHT-BASE_EDGE*1.5), # body top edge before
     (OUTER_L, OUTER_W, BASE_HEIGHT+TOP_HEIGHT), # body top
     (OUTER_L-ER2, OUTER_W-ER2, BASE_HEIGHT+TOP_HEIGHT), # body top edge after
 ]

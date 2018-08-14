@@ -1,0 +1,27 @@
+# Notes for rendering with Blender
+
+- Change to Cycles rendering
+- Tools > Shading: smooth
+- Materials tab > new material > Surface: Principled BSDF
+	- Set base color: white
+	- Set roughness: 0.15
+- World tab > Surface: use nodes
+	- Settings > Map resolution: 2048
+- Node editor view > world
+	- Add new (shift + a)
+	- Texture > Environment texture
+	- Select hdri file
+	- Connect color nodes
+- Select camera
+	- Set location: x (15cm), y (-15cm), z (15cm)
+	- Constraints tab > Track to
+		- Target object
+		- To: -Z
+		- Up: Y
+	- Camera tab:
+		- Clipping > End: 50cm
+- Switch to rendered view
+- Render tab > Sampling
+	- Samples: 48
+	- Clamp direct: 5.0
+	- Clamp indirect: 5.0

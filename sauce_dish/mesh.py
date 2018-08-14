@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
 # python mesh.py -percent 0.2
+# python mesh.py -out "both/mesh_08.json" -offset -22
+# python mesh.py -out "both/mesh_20.json" -offset 22 -percent 0.2
 
 import argparse
 import csv
@@ -12,35 +14,44 @@ import sys
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-percent', dest="PERCENT", type=float, default=0.086, help="Percent of people serving in military during WW2: 8.6 percent of all Americans and 20 percent of Chinese in America")
+parser.add_argument('-offset', dest="OFFSET", type=float, default=0, help="Offset the position of the saucer")
+parser.add_argument('-out', dest="OUTPUT_FILE", default="mesh.json", help="Output JSON file")
 args = parser.parse_args()
 
 # data config
-OUTPUT_FILE = "mesh.json"
+OUTPUT_FILE = args.OUTPUT_FILE
+OFFSET = args.OFFSET
 PERCENT = args.PERCENT
 
 # cup config in mm
-CENTER = (0, 0, 0)
+CENTER = (0, OFFSET, 0)
 PRECISION = 8
-LENGTH = 146.0
-WIDTH = 72.0
-HEIGHT = 32.0
+LENGTH = 100.0
+WIDTH = 45.0
+HEIGHT = 24.0
 BASE_HEIGHT = 7.0
 EDGE_RADIUS = 3.0
-CORNER_RADIUS = 6.0
-THICKNESS = 6.0
+CORNER_RADIUS = 3.0
+THICKNESS = 5.0
 BASE_THICKNESS = 5.0
-DIVIDER_THICKNESS = 6.0
+DIVIDER_THICKNESS = 5.0
+DIVIDER_ADJUST = 1.15
 
 # calculations
-BASE_LENGTH = LENGTH - 6.0 * 2
-BASE_WIDTH = WIDTH - 6.0 * 2
+BASE_LENGTH = LENGTH - 2.0 * 2
+BASE_WIDTH = WIDTH - 2.0 * 2
 T2 = THICKNESS * 2
 ER2 = EDGE_RADIUS * 2
 BT2 = BASE_THICKNESS * 2
 
-AVAILABLE_CENTER_SPACE = BASE_LENGTH - T2 - DIVIDER_THICKNESS
-SPACE_LEFT = AVAILABLE_CENTER_SPACE * PERCENT
-SPACE_RIGHT = AVAILABLE_CENTER_SPACE * (1.0-PERCENT)
+INNER_HEIGHT = (HEIGHT - BASE_HEIGHT - THICKNESS)
+INNER_WIDTH = (BASE_WIDTH - T2)
+INNER_LENGTH = (BASE_LENGTH - T2)
+DIVIDER_AREA = DIVIDER_THICKNESS * INNER_WIDTH * INNER_HEIGHT
+AVAILABLE_AREA = INNER_LENGTH * INNER_WIDTH * INNER_HEIGHT - DIVIDER_AREA
+AREA_LEFT = AVAILABLE_AREA * PERCENT
+SPACE_LEFT = AREA_LEFT / (INNER_WIDTH * INNER_HEIGHT) + DIVIDER_ADJUST
+SPACE_RIGHT = INNER_LENGTH - THICKNESS - SPACE_LEFT
 DIVIDER_PADDING = 0.0
 DIVIDER_LEFT = BASE_LENGTH * -0.5 + THICKNESS + SPACE_LEFT - DIVIDER_PADDING
 DIVIDER_RIGHT = DIVIDER_LEFT + DIVIDER_PADDING + DIVIDER_THICKNESS + DIVIDER_PADDING
@@ -51,9 +62,9 @@ if PERCENT < 0.1:
     DIVIDER_LEFT_EDGE_RADIUS = 1.0
 
 DISH = [
-    [BASE_LENGTH-BT2-BT2-ER2, BASE_WIDTH-BT2-BT2-ER2, BASE_HEIGHT, 1.0], # start at inner base top inner edge
+    [BASE_LENGTH-BT2-BT2-ER2*0.2, BASE_WIDTH-BT2-BT2-ER2*0.2, BASE_HEIGHT, 1.0], # start at inner base top inner edge
     [BASE_LENGTH-BT2-BT2, BASE_WIDTH-BT2-BT2, BASE_HEIGHT, CORNER_RADIUS/2], # move out to inner base top
-    [BASE_LENGTH-BT2-BT2, BASE_WIDTH-BT2-BT2, 0, CORNER_RADIUS*0.667], # move down to inner base bottom
+    [BASE_LENGTH-BT2-BT2, BASE_WIDTH-BT2-BT2, 0, CORNER_RADIUS*0.5], # move down to inner base bottom
     [BASE_LENGTH-BT2, BASE_WIDTH-BT2, 0], # move out to base bottom
     [BASE_LENGTH-BT2, BASE_WIDTH-BT2, BASE_HEIGHT], # move up to base top
     [BASE_LENGTH, BASE_WIDTH, BASE_HEIGHT], # move out to body bottom

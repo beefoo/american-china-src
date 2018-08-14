@@ -1,14 +1,17 @@
 # American China
 
-_Under development. Coming mid 2018._ A porcelain dining set inspired by people, objects, and events in Chinese American history
+A porcelain dining set inspired by people, objects, and events in Chinese American history. [View website](http://americanchina.brianfoo.com/) for more information
 
 ## Table of contents
 
 1. [Spoon](spoon/)
 1. [Plate](plate/)
-1. [Bowl](bowl/)
 1. [Cup](cup/)
 1. [Pot](pot/) with [lid](pot_lid/)
+
+Pieces that have been prototyped, but not pursued:
+
+1. [Bowl](bowl/)
 1. [Sauce dish](sauce_dish/)
 
 ## Requirements for generating new 3d models

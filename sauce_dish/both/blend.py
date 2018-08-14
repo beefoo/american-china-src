@@ -6,13 +6,18 @@
 
 import bpy
 import json
+import math
 import os
 
 # bpy.app.debug_wm = True
 
+filenames = ["mesh_20.json", "mesh_08.json"]
+
 data = []
-with open(bpy.path.abspath("//mesh.json")) as f:
-    data = json.load(f)
+for filename in filenames:
+    with open(bpy.path.abspath("//"+filename)) as f:
+        d = json.load(f)
+        data += d
 
 # blend starts here
 scene = bpy.context.scene
@@ -54,17 +59,28 @@ for d in data:
     mesh.update(calc_edges=True)
 
     # Flip some of the faces
-    for i in d["flipFaces"]:
-        mesh.polygons[i].flip()
+    if "flipFaces" in d:
+        for i in d["flipFaces"]:
+            mesh.polygons[i].flip()
 
     # Select the object
     obj.select = True
 
     # Add subsurf modifier
-    # obj.modifiers.new("subd", type='SUBSURF')
-    # obj.modifiers['subd'].levels = 2
-    # obj.modifiers["subd"].render_levels = 2
-    #
-    # # Add decimate modifier to reduce polys
-    # obj.modifiers.new("dec", type='DECIMATE')
-    # obj.modifiers["dec"].ratio = 0.5
+    obj.modifiers.new("subd", type='SUBSURF')
+    obj.modifiers['subd'].levels = 3
+    obj.modifiers["subd"].render_levels = 3
+
+    # Add decimate modifier to reduce polys
+    obj.modifiers.new("dec", type='DECIMATE')
+    obj.modifiers["dec"].ratio = 0.1
+
+# select all objects except camera and lamp
+for obj in bpy.data.objects:
+    if obj.name not in ["Camera", "Lamp"]:
+        scene.objects.active = obj
+
+# for showing object thickness
+# bpy.ops.object.editmode_toggle()
+# bpy.context.object.data.show_statvis = True
+# scene.tool_settings.statvis.thickness_max = 3
